@@ -1,9 +1,13 @@
-# Environment
+# --- Environment & Secret ---
 .env
 *.env
 !.env.example
+.venv/
+venv/
+env/
+ENV/
 
-# Python
+# --- Python ---
 __pycache__/
 *.py[cod]
 *$py.class
@@ -14,31 +18,38 @@ dist/
 *.egg-info/
 .eggs/
 *.egg
-.venv/
-venv/
-env/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
 htmlcov/
 .coverage
 .coverage.*
+nosetests.xml
+coverage.xml
+*.lprof
+instance/
 
-# Node
-node_modules/
-dist/
-.cache/
+# --- Node/Frontend ---
+frontend/node_modules/
+frontend/dist/
+frontend/.cache/
+frontend/build/
 *.tsbuildinfo
 
-# IDEs
+# --- IDEs & Editors ---
 .vscode/
+!.vscode/extensions.json
 .idea/
 *.swp
 *.swo
 .DS_Store
+Thumbs.db
 
-# Docker
+# --- Docker & Logs ---
 *.log
+docker-compose.override.yml
 
-# Migrations (keep versions, exclude auto-gen junk)
+# --- Database & Migrations ---
 backend/alembic/versions/__pycache__/
+*.sqlite
+*.db
