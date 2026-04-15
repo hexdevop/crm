@@ -1,5 +1,17 @@
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, EmailStr, field_validator, TypeAdapter
 from app.core.security import is_strong_password
+from app.config import settings
+
+
+def validate_email_with_superadmin(v: str) -> str:
+    """Валидирует email, делая исключение для суперадмина с доменом .local"""
+    v = v.lower()
+    if v == settings.SUPERADMIN_EMAIL.lower():
+        return v
+    try:
+        return str(TypeAdapter(EmailStr).validate_python(v))
+    except Exception:
+        raise ValueError("Invalid email address")
 
 
 class RegisterRequest(BaseModel):
@@ -7,8 +19,13 @@ class RegisterRequest(BaseModel):
     company_slug: str
     first_name: str
     last_name: str
-    email: EmailStr
+    email: str
     password: str
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, v: str) -> str:
+        return validate_email_with_superadmin(v)
 
     @field_validator("password")
     @classmethod
@@ -30,8 +47,13 @@ class RegisterRequest(BaseModel):
 
 
 class LoginRequest(BaseModel):
-    email: EmailStr
+    email: str
     password: str
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, v: str) -> str:
+        return validate_email_with_superadmin(v)
 
 
 class TokenResponse(BaseModel):

@@ -25,7 +25,8 @@ class UserRepository(BaseRepository[User]):
             .options(selectinload(User.user_roles).selectinload(UserRole.role))
             .where(User.id == user_id)
         )
-        if self.company_id:
+        # Apply company_id filter only if it's explicitly set (not for superadmins)
+        if self.company_id is not None:
             q = q.where(User.company_id == self.company_id)
         result = await self.db.execute(q)
         return result.scalar_one_or_none()
@@ -43,7 +44,8 @@ class UserRepository(BaseRepository[User]):
             select(User)
             .options(selectinload(User.user_roles).selectinload(UserRole.role))
         )
-        if self.company_id:
+        # Apply company_id filter only if it's explicitly set (not for superadmins)
+        if self.company_id is not None:
             q = q.where(User.company_id == self.company_id)
         if search:
             q = q.where(

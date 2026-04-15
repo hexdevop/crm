@@ -18,6 +18,40 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+async def ensure_superadmin():
+    """Создает суперпользователя, если он отсутствует в базе данных"""
+    from app.database import AsyncSessionLocal
+    from app.core.security import hash_password
+    from app.models.user import User
+    from sqlalchemy import select
+
+    async with AsyncSessionLocal() as db:
+        # Ищем суперпользователя по email из конфига
+        result = await db.execute(
+            select(User).where(User.email == settings.SUPERADMIN_EMAIL.lower())
+        )
+        admin = result.scalar_one_or_none()
+
+        if not admin:
+            logger.info(f"Creating superadmin: {settings.SUPERADMIN_EMAIL}")
+            admin = User(
+                email=settings.SUPERADMIN_EMAIL.lower(),
+                hashed_password=hash_password(settings.SUPERADMIN_PASSWORD),
+                first_name="Super",
+                last_name="Admin",
+                is_superadmin=True,
+                is_active=True,
+                company_id=None,
+            )
+            db.add(admin)
+            await db.commit()
+            logger.info("Superadmin created successfully")
+        elif not admin.is_superadmin:
+            admin.is_superadmin = True
+            await db.commit()
+            logger.info("Updated existing user to superadmin")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
@@ -28,6 +62,9 @@ async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.execute(text("SELECT 1"))
     logger.info("Database connection OK")
+
+    # Ensure superadmin exists
+    await ensure_superadmin()
 
     # Verify Redis
     redis = await get_redis()

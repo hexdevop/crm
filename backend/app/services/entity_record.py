@@ -143,12 +143,12 @@ class EntityRecordService:
     def _coerce_value(self, field: EntityField, value: Any) -> Any:
         ft = field.field_type
 
-        if ft == FieldType.TEXT or ft == FieldType.PHONE:
+        if ft == FieldType.text or ft == FieldType.phone:
             if not isinstance(value, str):
                 raise ValidationException(f"Field '{field.name}' must be text")
             return str(value)
 
-        if ft == FieldType.EMAIL:
+        if ft == FieldType.email:
             import re
             if not isinstance(value, str) or not re.match(
                 r"^[^\s@]+@[^\s@]+\.[^\s@]+$", value
@@ -156,7 +156,7 @@ class EntityRecordService:
                 raise ValidationException(f"Field '{field.name}' must be a valid email")
             return value.lower()
 
-        if ft == FieldType.NUMBER:
+        if ft == FieldType.number:
             try:
                 num = float(value)
             except (TypeError, ValueError):
@@ -172,14 +172,14 @@ class EntityRecordService:
                 )
             return num
 
-        if ft == FieldType.BOOLEAN:
+        if ft == FieldType.boolean:
             if not isinstance(value, bool):
                 if isinstance(value, str):
                     return value.lower() in ("true", "1", "yes")
                 raise ValidationException(f"Field '{field.name}' must be boolean")
             return value
 
-        if ft == FieldType.DATE:
+        if ft == FieldType.date:
             if isinstance(value, str):
                 try:
                     date.fromisoformat(value)
@@ -190,7 +190,7 @@ class EntityRecordService:
                     )
             return str(value)
 
-        if ft == FieldType.SELECT:
+        if ft == FieldType.select:
             config = field.config or {}
             options = [opt["value"] for opt in config.get("options", [])]
             if value not in options:

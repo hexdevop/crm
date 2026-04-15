@@ -1,14 +1,31 @@
 import uuid
 from datetime import datetime
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, EmailStr, field_validator, TypeAdapter
 from app.core.security import is_strong_password
+from app.config import settings
+
+
+def validate_email_with_superadmin(v: str) -> str:
+    """Валидирует email, делая исключение для суперадмина с доменом .local"""
+    v = v.lower()
+    if v == settings.SUPERADMIN_EMAIL.lower():
+        return v
+    try:
+        return str(TypeAdapter(EmailStr).validate_python(v))
+    except Exception:
+        raise ValueError("Invalid email address")
 
 
 class UserCreate(BaseModel):
-    email: EmailStr
+    email: str
     password: str
     first_name: str
     last_name: str
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, v: str) -> str:
+        return validate_email_with_superadmin(v)
 
     @field_validator("password")
     @classmethod
@@ -24,7 +41,14 @@ class UserCreate(BaseModel):
 class UserUpdate(BaseModel):
     first_name: str | None = None
     last_name: str | None = None
-    email: EmailStr | None = None
+    email: str | None = None
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        return validate_email_with_superadmin(v)
 
 
 class UserPasswordChange(BaseModel):

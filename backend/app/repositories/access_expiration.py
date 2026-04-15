@@ -14,7 +14,7 @@ class AccessExpirationRepository(BaseRepository[AccessExpiration]):
 
     async def get_by_user(self, user_id: uuid.UUID) -> AccessExpiration | None:
         q = select(AccessExpiration).where(AccessExpiration.user_id == user_id)
-        if self.company_id:
+        if self.company_id is not None:
             q = q.where(AccessExpiration.company_id == self.company_id)
         result = await self.db.execute(q)
         return result.scalar_one_or_none()

@@ -11,14 +11,16 @@ class EntityRepository(BaseRepository[Entity]):
 
     async def get_by_slug(self, slug: str) -> Entity | None:
         q = select(Entity).where(Entity.slug == slug)
-        if self.company_id:
+        # Apply company_id filter only if it's explicitly set (not for superadmins)
+        if self.company_id is not None:
             q = q.where(Entity.company_id == self.company_id)
         result = await self.db.execute(q)
         return result.scalar_one_or_none()
 
     async def list_entities(self) -> list[Entity]:
         q = select(Entity)
-        if self.company_id:
+        # Apply company_id filter only if it's explicitly set (not for superadmins)
+        if self.company_id is not None:
             q = q.where(Entity.company_id == self.company_id)
         result = await self.db.execute(q.order_by(Entity.name))
         return list(result.scalars().all())

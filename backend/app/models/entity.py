@@ -15,13 +15,13 @@ if TYPE_CHECKING:
 
 
 class FieldType(str, enum.Enum):
-    TEXT = "text"
-    NUMBER = "number"
-    DATE = "date"
-    BOOLEAN = "boolean"
-    SELECT = "select"
-    EMAIL = "email"
-    PHONE = "phone"
+    text = "text"
+    number = "number"
+    date = "date"
+    boolean = "boolean"
+    select = "select"
+    email = "email"
+    phone = "phone"
 
 
 class Entity(Base, TimestampMixin):

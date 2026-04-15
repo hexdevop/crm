@@ -24,7 +24,7 @@ class EntityRecordRepository(BaseRepository[EntityRecord]):
     ) -> tuple[list[EntityRecord], int]:
         q = select(EntityRecord).where(EntityRecord.entity_id == entity_id)
 
-        if self.company_id:
+        if self.company_id is not None:
             q = q.where(EntityRecord.company_id == self.company_id)
 
         if search:
@@ -62,13 +62,13 @@ class EntityRecordRepository(BaseRepository[EntityRecord]):
             EntityRecord.id == record_id,
             EntityRecord.entity_id == entity_id,
         )
-        if self.company_id:
+        if self.company_id is not None:
             q = q.where(EntityRecord.company_id == self.company_id)
         result = await self.db.execute(q)
         return result.scalar_one_or_none()
 
     async def count_by_entity(self, entity_id: uuid.UUID) -> int:
         q = select(func.count()).where(EntityRecord.entity_id == entity_id)
-        if self.company_id:
+        if self.company_id is not None:
             q = q.where(EntityRecord.company_id == self.company_id)
         return (await self.db.execute(q)).scalar_one()

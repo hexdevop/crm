@@ -24,6 +24,8 @@ class BaseRepository(Generic[ModelType]):
     def _base_query(self):
         """Returns select with company_id filter applied if set."""
         q = select(self.model)
+        # Apply company_id filter ONLY if it's explicitly provided.
+        # This allows Superadmin (where company_id is None) to bypass filtering.
         if self.company_id is not None and hasattr(self.model, "company_id"):
             q = q.where(self.model.company_id == self.company_id)
         return q

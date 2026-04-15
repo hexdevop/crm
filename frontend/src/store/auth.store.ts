@@ -30,7 +30,7 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'crm-auth',
-      storage: createJSONStorage(() => sessionStorage), // sessionStorage = cleared on tab close
+      storage: createJSONStorage(() => localStorage), // localStorage сохраняет данные между вкладками
       partialize: (state) => ({
         accessToken: state.accessToken,
         isAuthenticated: state.isAuthenticated,

@@ -101,16 +101,20 @@ class UserService:
         assigned_by: uuid.UUID,
         redis,
     ) -> None:
-        await self.get_user(user_id)
+        user = await self.get_user(user_id)
 
+        # Get role without company filter if superadmin is performing the action
+        # but the role must still belong to some company or be system-wide
         role = await self.role_repo.get_by_id_with_permissions(role_id)
         if not role:
             raise NotFoundException("Role")
-        if str(role.company_id) != str(self.company_id):
-            raise ForbiddenException("Role does not belong to company")
+
+        # Validation: Role must belong to the same company as the user
+        # unless it's a superadmin managed situation where user might not have a company
+        if user.company_id and str(role.company_id) != str(user.company_id):
+            raise ForbiddenException("Role does not belong to the user's company")
 
         # Check if already assigned
-        user = await self.repo.get_by_id_with_roles(user_id)
         existing_role_ids = {str(ur.role_id) for ur in user.user_roles}
         if str(role_id) in existing_role_ids:
             raise ConflictException("Role already assigned")

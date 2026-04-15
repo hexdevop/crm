@@ -36,7 +36,8 @@ class RoleRepository(BaseRepository[Role]):
             )
             .where(Role.id == role_id)
         )
-        if self.company_id:
+        # Apply company_id filter only if it's explicitly set (not for superadmins)
+        if self.company_id is not None:
             q = q.where(Role.company_id == self.company_id)
         result = await self.db.execute(q)
         return result.scalar_one_or_none()
@@ -48,7 +49,8 @@ class RoleRepository(BaseRepository[Role]):
                 selectinload(Role.role_permissions).selectinload(RolePermission.permission)
             )
         )
-        if self.company_id:
+        # Apply company_id filter only if it's explicitly set (not for superadmins)
+        if self.company_id is not None:
             q = q.where(Role.company_id == self.company_id)
         result = await self.db.execute(q.order_by(Role.name))
         return list(result.scalars().all())
