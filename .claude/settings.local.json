@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir E:/crm)",
+      "Bash(cmd /c \"dir E:\\\\crm 2>&1\")"
+    ]
+  }
+}

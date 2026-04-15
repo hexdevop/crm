@@ -1,0 +1,23 @@
+interface PageHeaderProps {
+  title: string
+  description?: string
+  action?: React.ReactNode
+  breadcrumb?: React.ReactNode
+}
+
+export default function PageHeader({ title, description, action, breadcrumb }: PageHeaderProps) {
+  return (
+    <div className="mb-6">
+      {breadcrumb && <div className="mb-2">{breadcrumb}</div>}
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-semibold text-slate-900">{title}</h1>
+          {description && (
+            <p className="mt-1 text-sm text-slate-500">{description}</p>
+          )}
+        </div>
+        {action && <div className="shrink-0">{action}</div>}
+      </div>
+    </div>
+  )
+}
