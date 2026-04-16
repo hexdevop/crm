@@ -20,10 +20,10 @@ import { format } from 'date-fns'
 import type { User } from '@/types/user'
 
 const createSchema = z.object({
-  first_name: z.string().min(1, 'Required'),
-  last_name: z.string().min(1, 'Required'),
-  email: z.string().email(),
-  password: z.string().min(8).regex(/[A-Z]/, 'Need uppercase').regex(/[0-9]/, 'Need digit'),
+  first_name: z.string().min(1, 'Обязательное поле'),
+  last_name: z.string().min(1, 'Обязательное поле'),
+  email: z.string().email('Некорректный email'),
+  password: z.string().min(8, 'Минимум 8 символов').regex(/[A-Z]/, 'Нужна заглавная буква').regex(/[0-9]/, 'Нужна цифра'),
 })
 type CreateForm = z.infer<typeof createSchema>
 

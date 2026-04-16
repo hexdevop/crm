@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_current_user, require_permission
+from app.core.exceptions import ForbiddenException
 from app.database import get_db
 from app.redis_client import get_redis
 from app.schemas.telegram import (
@@ -22,6 +23,10 @@ async def get_settings(
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user=Depends(require_permission("manage_users")),
 ):
+    if current_user.company_id is None:
+        raise ForbiddenException(
+            "Telegram settings are scoped to a company. Superadmin has no company."
+        )
     service = TelegramService(db, current_user.company_id)
     return await service.get_settings()
 
@@ -32,6 +37,10 @@ async def update_settings(
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user=Depends(require_permission("manage_users")),
 ):
+    if current_user.company_id is None:
+        raise ForbiddenException(
+            "Telegram settings are scoped to a company. Superadmin has no company."
+        )
     service = TelegramService(db, current_user.company_id)
     return await service.update_settings(data)
 

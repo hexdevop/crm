@@ -18,7 +18,7 @@ export default function ConfirmDialog({
   onConfirm,
   title,
   description,
-  confirmLabel = 'Confirm',
+  confirmLabel = 'Подтвердить',
   loading,
   variant = 'danger',
 }: ConfirmDialogProps) {
@@ -31,7 +31,7 @@ export default function ConfirmDialog({
       footer={
         <>
           <Button variant="secondary" onClick={onClose} disabled={loading}>
-            Cancel
+            Отмена
           </Button>
           <Button variant={variant} onClick={onConfirm} loading={loading}>
             {confirmLabel}

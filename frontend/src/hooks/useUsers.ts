@@ -25,7 +25,7 @@ export function useCreateUser() {
     mutationFn: (data: UserCreate) => usersApi.create(data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['users'] })
-      toast.success('User created successfully')
+      toast.success('Пользователь создан')
     },
     onError: (err) => toast.error(getApiError(err)),
   })
@@ -39,7 +39,7 @@ export function useUpdateUser() {
     onSuccess: (_, { id }) => {
       qc.invalidateQueries({ queryKey: ['users'] })
       qc.invalidateQueries({ queryKey: ['users', id] })
-      toast.success('User updated')
+      toast.success('Пользователь обновлён')
     },
     onError: (err) => toast.error(getApiError(err)),
   })
@@ -51,7 +51,7 @@ export function useDeleteUser() {
     mutationFn: usersApi.delete,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['users'] })
-      toast.success('User deleted')
+      toast.success('Пользователь удалён')
     },
     onError: (err) => toast.error(getApiError(err)),
   })
@@ -64,7 +64,7 @@ export function useToggleUserActive() {
       active ? usersApi.activate(id) : usersApi.deactivate(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['users'] })
-      toast.success('User status updated')
+      toast.success('Статус пользователя изменён')
     },
     onError: (err) => toast.error(getApiError(err)),
   })
@@ -78,7 +78,7 @@ export function useAssignRole() {
     onSuccess: (_, { userId }) => {
       qc.invalidateQueries({ queryKey: ['users', userId] })
       qc.invalidateQueries({ queryKey: ['users'] })
-      toast.success('Role assigned')
+      toast.success('Роль назначена')
     },
     onError: (err) => toast.error(getApiError(err)),
   })
@@ -92,7 +92,7 @@ export function useRemoveRole() {
     onSuccess: (_, { userId }) => {
       qc.invalidateQueries({ queryKey: ['users', userId] })
       qc.invalidateQueries({ queryKey: ['users'] })
-      toast.success('Role removed')
+      toast.success('Роль снята')
     },
     onError: (err) => toast.error(getApiError(err)),
   })

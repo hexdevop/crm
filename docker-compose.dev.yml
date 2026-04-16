@@ -1,0 +1,110 @@
+# ============================================================
+#  DEV compose — hot-reload, source mounts, debug logging
+#  Usage:  docker compose -f docker-compose.dev.yml up --build
+# ============================================================
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: crm_postgres_dev
+    environment:
+      POSTGRES_USER: crm
+      POSTGRES_PASSWORD: crm_secret
+      POSTGRES_DB: crm_db
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U crm -d crm_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: crm_redis_dev
+    command: redis-server --save 60 1 --loglevel warning
+    volumes:
+      - redis_dev_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: crm_backend_dev
+    volumes:
+      - ./backend:/app           # source mount for hot-reload
+    environment:
+      DATABASE_URL: postgresql+asyncpg://crm:crm_secret@postgres:5432/crm_db
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: dev-secret-key-change-in-production-minimum-32-characters-long
+      ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: "15"
+      REFRESH_TOKEN_EXPIRE_DAYS: "7"
+      ENVIRONMENT: development
+      BOT_TOKEN: "6689906797:AAHQNAkJRcq-WF958iorvzxHPBPmjCA3RhM"
+      INTERNAL_BOT_TOKEN: crm-dev-internal-bot-token-12345
+      # Browser origin — only the actual browser-reachable origins go here
+      CORS_ORIGINS: '["http://localhost:5173","http://localhost:3000"]'
+      SUPERADMIN_EMAIL: admin@crm.local
+      SUPERADMIN_PASSWORD: Admin123!
+      # Pass --reload flag to uvicorn (entrypoint.sh uses $UVICORN_FLAGS)
+      UVICORN_FLAGS: "--reload"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: crm_frontend_dev
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules        # keep container node_modules isolated
+    environment:
+      # Vite proxy target — uses Docker service name, not localhost
+      BACKEND_URL: http://backend:8000
+      # Do NOT set VITE_API_URL here — it would cause absolute URLs that bypass the proxy
+    depends_on:
+      - backend
+    ports:
+      - "5173:5173"
+    restart: unless-stopped
+
+  bot:
+    build:
+      context: ./bot
+      dockerfile: Dockerfile
+    container_name: crm_bot_dev
+    volumes:
+      - ./bot:/app
+    environment:
+      BOT_TOKEN: "6689906797:AAHQNAkJRcq-WF958iorvzxHPBPmjCA3RhM"
+      REDIS_URL: redis://redis:6379/1
+      BACKEND_INTERNAL_URL: http://backend:8000
+      INTERNAL_BOT_TOKEN: crm-dev-internal-bot-token-12345
+    depends_on:
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_started
+    restart: unless-stopped
+
+volumes:
+  postgres_dev_data:
+  redis_dev_data:

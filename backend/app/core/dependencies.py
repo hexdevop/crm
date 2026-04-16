@@ -155,6 +155,15 @@ def require_permission(permission_code: str):
     return _check
 
 
+def require_superadmin():
+    """Dependency: raises 403 unless the current user is a superadmin."""
+    async def _check(current_user=Depends(get_current_user)):
+        if not current_user.is_superadmin:
+            raise ForbiddenException("Superadmin access required")
+        return current_user
+    return _check
+
+
 async def invalidate_user_permissions_cache(user_id: uuid.UUID, redis) -> None:
     """Call after role assignment changes."""
     await redis.delete(f"perms:{user_id}")

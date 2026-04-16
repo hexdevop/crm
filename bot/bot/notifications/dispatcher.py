@@ -30,24 +30,22 @@ class NotificationDispatcher:
         return self._redis
 
     async def _get_company_chat_ids(self, company_id: str) -> list[str]:
-        """Fetch all telegram_chat_ids for active users of a company."""
+        """Fetch all telegram_chat_ids for active users of a company via secure internal endpoint."""
         try:
             async with httpx.AsyncClient(timeout=5) as client:
-                # This uses an internal endpoint — in production use a service token
                 resp = await client.get(
-                    f"{settings.BACKEND_INTERNAL_URL}/api/v1/users",
-                    headers={"X-Internal-Token": "crm-bot-internal"},
-                    params={"size": 100},
+                    f"{settings.BACKEND_INTERNAL_URL}/api/v1/users/internal/by-company/{company_id}",
+                    headers={"X-Internal-Token": settings.INTERNAL_BOT_TOKEN},
                 )
                 if resp.status_code == 200:
-                    data = resp.json()
+                    users = resp.json()
                     return [
                         u["telegram_chat_id"]
-                        for u in data.get("items", [])
+                        for u in users
                         if u.get("telegram_chat_id") and u.get("is_active")
                     ]
         except Exception as e:
-            logger.warning(f"Could not fetch company users: {e}")
+            logger.warning(f"Could not fetch company users for {company_id}: {e}")
         return []
 
     async def dispatch(self, channel: str, raw_message: str) -> None:

@@ -4,26 +4,28 @@ from typing import Annotated
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import require_permission
+from app.core.dependencies import require_superadmin
 from app.database import get_db
-from app.redis_client import get_redis
 from app.schemas.access_expiration import (
     AccessExpirationCreate,
     AccessExpirationResponse,
     AccessExpirationUpdate,
 )
-from app.schemas.common import MessageResponse
 from app.services.access_expiration import AccessExpirationService
 
 router = APIRouter(prefix="/access-expiration", tags=["Access Expiration"])
+
+# All endpoints here are superadmin-only.
+# The service is initialized with company_id=None which means "global scope" —
+# the repository will skip the tenant filter (same pattern as superadmin entity access).
 
 
 @router.get("", response_model=list[AccessExpirationResponse])
 async def list_expirations(
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_user=Depends(require_permission("manage_users")),
+    current_user=Depends(require_superadmin()),
 ):
-    service = AccessExpirationService(db, current_user.company_id)
+    service = AccessExpirationService(db, None)
     items, _ = await service.list_expirations()
     return items
 
@@ -32,9 +34,10 @@ async def list_expirations(
 async def set_expiration(
     data: AccessExpirationCreate,
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_user=Depends(require_permission("manage_users")),
+    current_user=Depends(require_superadmin()),
 ):
-    service = AccessExpirationService(db, current_user.company_id)
+    # company_id is resolved from the target user inside the service
+    service = AccessExpirationService(db, None)
     return await service.set_expiration(data)
 
 
@@ -42,9 +45,9 @@ async def set_expiration(
 async def get_expiration(
     user_id: uuid.UUID,
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_user=Depends(require_permission("manage_users")),
+    current_user=Depends(require_superadmin()),
 ):
-    service = AccessExpirationService(db, current_user.company_id)
+    service = AccessExpirationService(db, None)
     return await service.get_expiration(user_id)
 
 
@@ -53,9 +56,9 @@ async def update_expiration(
     user_id: uuid.UUID,
     data: AccessExpirationUpdate,
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_user=Depends(require_permission("manage_users")),
+    current_user=Depends(require_superadmin()),
 ):
-    service = AccessExpirationService(db, current_user.company_id)
+    service = AccessExpirationService(db, None)
     return await service.update_expiration(user_id, data)
 
 
@@ -63,7 +66,7 @@ async def update_expiration(
 async def delete_expiration(
     user_id: uuid.UUID,
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_user=Depends(require_permission("manage_users")),
+    current_user=Depends(require_superadmin()),
 ):
-    service = AccessExpirationService(db, current_user.company_id)
+    service = AccessExpirationService(db, None)
     await service.delete_expiration(user_id)

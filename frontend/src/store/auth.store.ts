@@ -50,3 +50,7 @@ export const useHasPermission = (permission: string): boolean => {
 export const usePermissions = (): string[] => {
   return useAuthStore((s) => s.user?.permissions ?? [])
 }
+
+export const useIsSuperAdmin = (): boolean => {
+  return useAuthStore((s) => s.user?.is_superadmin ?? false)
+}

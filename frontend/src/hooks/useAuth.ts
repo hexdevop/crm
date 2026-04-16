@@ -48,7 +48,7 @@ export function useRegister() {
       setUser(user)
       queryClient.setQueryData(['me'], user)
       navigate('/dashboard')
-      toast.success('Welcome! Your CRM is ready.')
+      toast.success('Добро пожаловать! CRM готова к работе.')
     },
     onError: (err) => {
       toast.error(getApiError(err))

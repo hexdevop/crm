@@ -1,123 +1,599 @@
-# CRM System — Setup Guide
+# Universal CRM — Руководство по установке и развёртыванию
 
-## Prerequisites
-
-- Python 3.11+
-- Node.js 20+
-- PostgreSQL 16
-- Redis 7
-- Docker + Docker Compose (optional)
+Это руководство охватывает три сценария: быстрый запуск в режиме разработки, развёртывание в production и ручная установка без Docker.
 
 ---
 
-## Option 1: Docker Compose (Recommended)
+## Содержание
+
+1. [Требования](#требования)
+2. [Режим разработки (DEV)](#режим-разработки-dev)
+3. [Режим продакшн (PROD)](#режим-продакшн-prod)
+4. [Ручная установка (без Docker)](#ручная-установка-без-docker)
+5. [Telegram-бот](#telegram-бот)
+6. [Управление базой данных](#управление-базой-данных)
+7. [Часто задаваемые вопросы](#часто-задаваемые-вопросы)
+8. [Структура проекта](#структура-проекта)
+
+---
+
+## Требования
+
+### Docker-способ (рекомендуется)
+
+| Компонент | Минимальная версия | Проверка |
+|---|---|---|
+| Docker Engine | 24.0+ | `docker --version` |
+| Docker Compose | v2.20+ (плагин, не standalone) | `docker compose version` |
+| RAM | 2 GB свободной памяти | |
+| Диск | 10 GB свободного места | |
+
+> Важно: используется `docker compose` (v2, плагин, без дефиса). Команда `docker-compose` (v1, standalone) устарела и может не работать с некоторыми конфигурациями файла.
+
+### Ручная установка (без Docker)
+
+| Компонент | Версия |
+|---|---|
+| Python | 3.11+ |
+| Node.js | 20+ |
+| PostgreSQL | 16 |
+| Redis | 7 |
+
+---
+
+## Режим разработки (DEV)
+
+Dev-конфигурация (`docker-compose.dev.yml`) запускает все пять сервисов: PostgreSQL, Redis, backend (FastAPI + uvicorn), frontend (Vite dev server), bot (aiogram). Исходный код монтируется в контейнеры — изменения подхватываются мгновенно без пересборки образов.
+
+### Шаг 1 — Клонировать репозиторий
 
 ```bash
-# 1. Copy and configure environment
-cp .env.example .env
-# Edit .env: set SECRET_KEY, BOT_TOKEN etc.
+git clone <repository-url> crm
+cd crm
+```
 
-# 2. Start everything
-docker-compose up --build
+### Шаг 2 — Переменные окружения
 
-# 3. Run migrations (first time only)
-docker-compose exec backend alembic upgrade head
+В dev-режиме **отдельный `.env` файл не нужен**: все переменные уже заданы прямо в `docker-compose.dev.yml` с безопасными дефолтами для локальной разработки.
 
-# Access:
-# Frontend: http://localhost:3000
-# API Docs:  http://localhost:8000/api/docs
+Если вы хотите переопределить какие-то значения (например, подключить реального Telegram-бота), создайте файл `.env` в корне проекта — Docker Compose подхватит его автоматически. Все доступные переменные перечислены в разделе [Переменные окружения](#переменные-окружения) файла README.md.
+
+### Шаг 3 — Запустить стек
+
+```bash
+docker compose -f docker-compose.dev.yml up --build
+```
+
+При первом запуске Docker:
+1. Собирает образы (backend, frontend, bot).
+2. Поднимает postgres и redis, ждёт их healthcheck.
+3. Запускает backend: `entrypoint.sh` выполняет `alembic upgrade head` (применяет все миграции), затем стартует `uvicorn` с флагом `--reload`.
+4. Автоматически создаёт аккаунт суперадминистратора (`admin@crm.local` / `Admin123!`) и системные разрешения.
+5. Запускает Vite dev server и бота.
+
+Дальнейшие запуски (без `--build`) занимают несколько секунд:
+
+```bash
+docker compose -f docker-compose.dev.yml up
+```
+
+### Доступные адреса
+
+| Сервис | URL | Описание |
+|--------|-----|----------|
+| Frontend | http://localhost:5173 | React-приложение (Vite dev server) |
+| Backend API | http://localhost:8000 | FastAPI |
+| Swagger UI | http://localhost:8000/api/docs | Интерактивная документация |
+| ReDoc | http://localhost:8000/api/redoc | Документация для чтения |
+| PostgreSQL | localhost:5432 | Прямой доступ к БД (dev only) |
+| Redis | localhost:6379 | Прямой доступ к Redis (dev only) |
+
+### Первый вход
+
+Перейдите на http://localhost:5173 и войдите с кредентиалами суперадминистратора:
+
+- **Email:** `admin@crm.local`
+- **Пароль:** `Admin123!`
+
+Суперадмин видит все компании и управляет системой. Для создания обычного рабочего пространства: создайте компанию через меню управления, добавьте пользователей и настройте роли.
+
+### Hot-reload в dev-режиме
+
+**Backend:** исходный код `./backend` монтируется в контейнер. `uvicorn` запущен с флагом `--reload` (через переменную `UVICORN_FLAGS=--reload`). Любое изменение `.py` файла автоматически перезапускает сервер — обычно за 1–2 секунды.
+
+**Frontend:** исходный код `./frontend` монтируется в контейнер. Vite отслеживает изменения и применяет их через HMR (Hot Module Replacement) без перезагрузки страницы.
+
+**Прокси:** Vite dev server проксирует все запросы `/api/*` на backend. URL для прокси берётся из переменной `BACKEND_URL` (в docker-compose — `http://backend:8000`, при ручном запуске — `http://localhost:8000`). **Не задавайте** переменную `VITE_API_URL` — это приведёт к использованию абсолютных URL и CORS-ошибкам.
+
+### Остановка и очистка
+
+```bash
+# Остановить контейнеры (данные в volumes сохраняются)
+docker compose -f docker-compose.dev.yml down
+
+# Остановить и удалить volumes (ВНИМАНИЕ: удаляет БД)
+docker compose -f docker-compose.dev.yml down -v
+
+# Пересобрать образы после изменений в Dockerfile или requirements.txt
+docker compose -f docker-compose.dev.yml up --build
 ```
 
 ---
 
-## Option 2: Manual Setup
+## Режим продакшн (PROD)
 
-### 1. PostgreSQL
+Prod-конфигурация (`docker-compose.prod.yml`) использует оптимизированные образы без source-mount'ов, добавляет nginx как reverse proxy с поддержкой HTTPS и ограничивает потребление памяти сервисами.
 
+### Шаг 1 — Подготовить переменные окружения
+
+Создайте файл `.env.prod` в корне проекта. Все переменные, помеченные `(обязательно)`, должны быть заданы — без них prod-контейнер откажется стартовать.
+
+```dotenv
+# === БЕЗОПАСНОСТЬ (ОБЯЗАТЕЛЬНО СМЕНИТЬ) ===
+
+# Случайная строка, минимум 32 символа. Генерация: python -c "import secrets; print(secrets.token_hex(32))"
+SECRET_KEY=замените-на-случайную-строку-минимум-32-символа
+
+# === БАЗА ДАННЫХ ===
+POSTGRES_USER=crm
+POSTGRES_PASSWORD=ваш_надёжный_пароль_postgres   # обязательно
+POSTGRES_DB=crm_db
+
+# === REDIS ===
+REDIS_PASSWORD=ваш_надёжный_пароль_redis          # рекомендуется
+
+# === СУПЕРАДМИНИСТРАТОР ===
+SUPERADMIN_EMAIL=admin@yourdomain.com
+SUPERADMIN_PASSWORD=ВашНадёжныйПароль123!          # обязательно
+
+# === TELEGRAM ===
+BOT_TOKEN=токен_от_BotFather                        # обязательно, если используется бот
+INTERNAL_BOT_TOKEN=случайная-строка-для-внутр-апи  # обязательно, сменить!
+WEBHOOK_URL=https://yourdomain.com/bot/webhook      # если используется webhook-режим
+
+# === CORS ===
+# Точный origin вашего фронтенда — без trailing slash
+CORS_ORIGINS=["https://yourdomain.com"]
+
+# === JWT (опционально, можно оставить дефолты) ===
+ACCESS_TOKEN_EXPIRE_MINUTES=15
+REFRESH_TOKEN_EXPIRE_DAYS=7
+```
+
+> **Внимание:** не добавляйте `VITE_API_URL` в `.env.prod`. В production nginx проксирует `/api` на backend — абсолютный URL не нужен и сломает маршрутизацию.
+
+### Шаг 2 — Добавить SSL-сертификаты
+
+Положите файлы сертификата в директорию `nginx/ssl/`:
+
+```
+nginx/
+└── ssl/
+    ├── cert.pem      # Сертификат (fullchain)
+    └── key.pem       # Приватный ключ
+```
+
+Получить бесплатный сертификат Let's Encrypt:
+
+```bash
+# Через certbot (вне Docker, до первого запуска)
+certbot certonly --standalone -d yourdomain.com
+# Сертификаты появятся в /etc/letsencrypt/live/yourdomain.com/
+# Скопируйте fullchain.pem → nginx/ssl/cert.pem
+#          privkey.pem    → nginx/ssl/key.pem
+```
+
+### Шаг 3 — Запустить prod-стек
+
+```bash
+docker compose -f docker-compose.prod.yml --env-file .env.prod up --build -d
+```
+
+Флаг `-d` запускает сервисы в фоне (detached mode).
+
+### Шаг 4 — Проверить работу
+
+```bash
+# Состояние контейнеров
+docker compose -f docker-compose.prod.yml ps
+
+# Логи backend
+docker compose -f docker-compose.prod.yml logs backend --tail=50
+
+# Логи nginx
+docker compose -f docker-compose.prod.yml logs nginx --tail=50
+
+# Проверить healthcheck backend
+curl -f https://yourdomain.com/api/health
+```
+
+### Архитектура prod-окружения
+
+```
+Интернет
+   │  :443 (HTTPS)
+   ▼
+nginx (crm_nginx)
+   ├── /api/*  → proxy_pass http://backend:8000
+   └── /*      → proxy_pass http://frontend:80  (собранная React-SPA)
+
+backend (crm_backend)   — expose 8000, не публичный
+frontend (crm_frontend) — expose 80,   не публичный (nginx-static)
+postgres (crm_postgres) — только внутренняя сеть
+redis (crm_redis)       — только внутренняя сеть
+bot (crm_bot)           — только внутренняя сеть
+```
+
+В prod-режиме PostgreSQL и Redis не экспонируют порты наружу — доступны только другим сервисам Docker-сети.
+
+### Обновление в production
+
+```bash
+# Получить новый код
+git pull
+
+# Пересобрать и перезапустить (с минимальным downtime)
+docker compose -f docker-compose.prod.yml --env-file .env.prod up --build -d
+
+# Миграции применяются автоматически через entrypoint.sh при старте backend
+```
+
+---
+
+## Ручная установка (без Docker)
+
+Используйте этот способ если Docker недоступен или нужна максимальная гибкость.
+
+### Предварительно: запустите PostgreSQL и Redis
+
+**PostgreSQL:**
 ```sql
+-- Выполните в psql как суперпользователь
 CREATE USER crm WITH PASSWORD 'crm_secret';
 CREATE DATABASE crm_db OWNER crm;
 ```
 
-### 2. Backend
+**Redis:** запустите локально на порту 6379 (стандартная установка).
+
+### Backend
 
 ```bash
 cd backend
+
+# Создать виртуальное окружение
 python -m venv .venv
-source .venv/bin/activate   # Windows: .venv\Scripts\activate
+source .venv/bin/activate        # Linux / macOS
+# .venv\Scripts\activate         # Windows
+
+# Установить зависимости
 pip install -r requirements.txt
 
-# Configure
-cp ../.env.example ../.env
-# Edit .env: set DATABASE_URL, REDIS_URL, SECRET_KEY
+# Создать файл настроек
+# Можно скопировать из docker-compose.dev.yml нужные значения
+cat > ../.env << 'EOF'
+SECRET_KEY=dev-secret-key-change-in-production-minimum-32-characters-long
+DATABASE_URL=postgresql+asyncpg://crm:crm_secret@localhost:5432/crm_db
+REDIS_URL=redis://localhost:6379/0
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=15
+REFRESH_TOKEN_EXPIRE_DAYS=7
+ENVIRONMENT=development
+BOT_TOKEN=
+INTERNAL_BOT_TOKEN=crm-dev-internal-bot-token-12345
+CORS_ORIGINS=["http://localhost:5173"]
+SUPERADMIN_EMAIL=admin@crm.local
+SUPERADMIN_PASSWORD=Admin123!
+EOF
 
-# Run migrations
+# Применить миграции (создаст таблицы и суперадмина)
 alembic upgrade head
 
-# Start
-uvicorn app.main:app --reload --port 8000
+# Запустить сервер с hot-reload
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-### 3. Frontend
+Backend будет доступен на http://localhost:8000.
+
+### Frontend
 
 ```bash
 cd frontend
 npm install
+
+# Убедитесь, что VITE_API_URL НЕ задан в .env.
+# Vite сам проксирует /api → http://localhost:8000 (см. vite.config.ts).
 npm run dev
-# Opens at http://localhost:5173
 ```
 
-### 4. Telegram Bot (optional)
+Frontend будет доступен на http://localhost:5173. Прокси `/api` → `http://localhost:8000` настроен в `vite.config.ts` через переменную `BACKEND_URL` (дефолт — `http://localhost:8000`).
+
+### Bot (опционально)
 
 ```bash
 cd bot
 pip install -r requirements.txt
-# Set BOT_TOKEN in .env
+
+# Задайте переменные:
+export BOT_TOKEN="ваш_токен_от_BotFather"
+export REDIS_URL="redis://localhost:6379/1"
+export BACKEND_INTERNAL_URL="http://localhost:8000"
+export INTERNAL_BOT_TOKEN="crm-dev-internal-bot-token-12345"
+
 python -m bot.main
 ```
 
 ---
 
-## First Login
+## Telegram-бот
 
-After starting, go to `http://localhost:5173/register` and create your company + Owner account.
+### Создание бота
 
-Default superadmin (if using seeded data):
-- Email: `admin@crm.local`
-- Password: `Admin123!`
+1. Откройте Telegram, найдите `@BotFather`.
+2. Отправьте `/newbot`, задайте имя и username.
+3. Скопируйте выданный `BOT_TOKEN`.
+4. Задайте `BOT_TOKEN` в переменных окружения (dev: `docker-compose.dev.yml`, prod: `.env.prod`).
+
+### Привязка аккаунта
+
+1. Войдите в CRM-приложение.
+2. Перейдите в **Настройки** → **Telegram-интеграция**.
+3. Нажмите **Сгенерировать токен подключения** — будет показан одноразовый токен.
+4. Откройте бота в Telegram и отправьте команду:
+   ```
+   /connect ВАШ_ТОКЕН
+   ```
+5. Бот подтвердит привязку. Теперь уведомления будут приходить в этот Telegram-аккаунт.
+
+### Как работают уведомления
+
+Backend публикует события в Redis-канал `crm:notifications:{company_id}`. Бот подписан на Redis через `SUBSCRIBE` и немедленно пересылает сообщения в Telegram. Привязка хранится в БД: `user.telegram_chat_id`.
 
 ---
 
-## API Documentation
+## Управление базой данных
 
-Swagger UI: `http://localhost:8000/api/docs`
-ReDoc: `http://localhost:8000/api/redoc`
+### Миграции Alembic
+
+Все команды выполняются из директории `backend/` (или внутри контейнера).
+
+```bash
+# Применить все pending-миграции (выполняется автоматически при старте контейнера)
+alembic upgrade head
+
+# Откатить последнюю миграцию
+alembic downgrade -1
+
+# Откатить до конкретной ревизии
+alembic downgrade <revision_id>
+
+# Показать историю миграций
+alembic history --verbose
+
+# Показать текущую ревизию в БД
+alembic current
+
+# Создать новую миграцию (autogenerate по изменениям моделей)
+alembic revision --autogenerate -m "описание изменений"
+
+# Создать пустую миграцию (для ручного SQL)
+alembic revision -m "описание изменений"
+```
+
+**Внутри Docker (dev):**
+
+```bash
+# Подключиться к контейнеру backend
+docker compose -f docker-compose.dev.yml exec backend bash
+
+# Внутри контейнера
+alembic revision --autogenerate -m "add new field to entity"
+alembic upgrade head
+```
+
+**Или одной командой:**
+
+```bash
+docker compose -f docker-compose.dev.yml exec backend alembic upgrade head
+```
+
+### Прямой доступ к PostgreSQL
+
+```bash
+# Через psql в контейнере (dev)
+docker compose -f docker-compose.dev.yml exec postgres psql -U crm -d crm_db
+
+# Или через любой GUI-клиент (TablePlus, DBeaver, pgAdmin):
+# Host: localhost, Port: 5432, User: crm, Password: crm_secret, DB: crm_db
+```
+
+### Резервное копирование
+
+```bash
+# Создать дамп (prod)
+docker compose -f docker-compose.prod.yml exec postgres \
+  pg_dump -U crm crm_db > backup_$(date +%Y%m%d_%H%M%S).sql
+
+# Восстановить из дампа
+docker compose -f docker-compose.prod.yml exec -T postgres \
+  psql -U crm crm_db < backup_20240101_120000.sql
+```
 
 ---
 
-## Architecture
+## Часто задаваемые вопросы
+
+### «Network Error» или «ERR_CONNECTION_REFUSED» при входе
+
+**Причина:** frontend не может достучаться до backend.
+
+**Решение:**
+1. Убедитесь, что backend-контейнер запущен: `docker compose -f docker-compose.dev.yml ps`.
+2. Посмотрите логи backend: `docker compose -f docker-compose.dev.yml logs backend`.
+3. Проверьте, что backend слушает порт 8000: откройте http://localhost:8000/health.
+4. Убедитесь, что `VITE_API_URL` **не задан** — при его наличии запросы идут напрямую, минуя прокси.
+
+### Ошибка миграции при старте backend
+
+**Симптом:** backend-контейнер падает с ошибкой `alembic.util.exc.CommandError` или `psycopg2.OperationalError`.
+
+**Решение:**
+1. Убедитесь, что postgres-контейнер поднялся и прошёл healthcheck: `docker compose -f docker-compose.dev.yml ps`.
+2. Запустите миграцию вручную:
+   ```bash
+   docker compose -f docker-compose.dev.yml exec backend alembic upgrade head
+   ```
+3. Если возник конфликт ревизий (несколько heads):
+   ```bash
+   alembic heads               # посмотреть все head-ревизии
+   alembic merge heads -m "merge"  # смержить
+   alembic upgrade head
+   ```
+
+### CORS-ошибки в браузере
+
+**Симптом:** `Access to XMLHttpRequest ... has been blocked by CORS policy`.
+
+**Причины и решения:**
+
+| Ситуация | Решение |
+|----------|---------|
+| Фронтенд открыт не на `localhost:5173` | Добавьте реальный origin в `CORS_ORIGINS` |
+| Задана переменная `VITE_API_URL` | Удалите её — запросы должны идти через прокси |
+| В prod: nginx не проксирует `/api` | Проверьте `nginx.prod.conf`, раздел `location /api/` |
+| В prod: неверный `CORS_ORIGINS` | Убедитесь, что значение содержит точный origin с протоколом и без trailing slash: `["https://yourdomain.com"]` |
+
+### Бот не получает сообщения / уведомления не приходят
+
+**Проверьте по шагам:**
+
+1. Контейнер бота запущен?
+   ```bash
+   docker compose -f docker-compose.dev.yml logs bot
+   ```
+2. `BOT_TOKEN` правильный? Проверьте через `@BotFather` → `/mybots`.
+3. Redis доступен из контейнера бота:
+   ```bash
+   docker compose -f docker-compose.dev.yml exec bot \
+     python -c "import redis; r=redis.from_url('redis://redis:6379/1'); print(r.ping())"
+   ```
+4. Привязка выполнена? В Telegram должна быть отправлена команда `/connect TOKEN`.
+5. `INTERNAL_BOT_TOKEN` совпадает в контейнерах backend и bot?
+
+### Контейнер падает с «out of memory»
+
+В prod-конфигурации установлены лимиты памяти. Если сервер имеет меньше 2 GB RAM, увеличьте swap или поднимите лимиты в `docker-compose.prod.yml`:
+
+```yaml
+deploy:
+  resources:
+    limits:
+      memory: 1g   # увеличить при необходимости
+```
+
+### Страница белая / React не загружается
+
+1. Откройте DevTools → Console — посмотрите JS-ошибки.
+2. Убедитесь, что Vite dev server запущен: http://localhost:5173 должен отдавать HTML.
+3. Логи frontend-контейнера:
+   ```bash
+   docker compose -f docker-compose.dev.yml logs frontend
+   ```
+4. Проверьте, что `node_modules` установлены:
+   ```bash
+   docker compose -f docker-compose.dev.yml exec frontend ls node_modules | head
+   ```
+
+---
+
+## Структура проекта
 
 ```
-E:/crm/
-├── backend/          # FastAPI + SQLAlchemy + PostgreSQL + Redis
+crm/
+├── backend/
 │   ├── app/
-│   │   ├── api/      # REST endpoints
-│   │   ├── core/     # Auth, RBAC, dependencies
-│   │   ├── models/   # SQLAlchemy ORM
-│   │   ├── schemas/  # Pydantic I/O
-│   │   ├── services/ # Business logic
-│   │   ├── repositories/ # Data access (tenant-scoped)
-│   │   └── tasks/    # APScheduler jobs
-│   └── alembic/      # DB migrations
-├── frontend/         # React + TypeScript + Tailwind CSS
-│   └── src/
-│       ├── api/      # Typed API calls
-│       ├── pages/    # All application pages
-│       ├── components/ # UI design system
-│       ├── hooks/    # React Query hooks
-│       └── store/    # Zustand state
-└── bot/              # aiogram Telegram bot
-    └── bot/
-        ├── handlers/ # /start, /connect commands
-        └── notifications/ # Redis pub/sub listener
+│   │   ├── api/
+│   │   │   ├── router.py              # Главный роутер (подключает v1)
+│   │   │   └── v1/
+│   │   │       ├── auth.py            # Логин, логаут, refresh, профиль
+│   │   │       ├── companies.py       # Управление компаниями (суперадмин)
+│   │   │       ├── users.py           # Пользователи компании
+│   │   │       ├── roles.py           # Роли и разрешения
+│   │   │       ├── entities.py        # Конструктор сущностей
+│   │   │       ├── entity_records.py  # Записи сущностей
+│   │   │       ├── telegram.py        # Привязка Telegram, токены
+│   │   │       └── access_expiration.py # Управление сроком доступа
+│   │   ├── core/
+│   │   │   ├── security.py            # JWT: create/decode/verify
+│   │   │   ├── dependencies.py        # FastAPI Depends: get_current_user, etc.
+│   │   │   ├── exceptions.py          # Кастомные HTTP-исключения
+│   │   │   └── pagination.py          # Pagination helper
+│   │   ├── models/
+│   │   │   ├── base.py                # TimestampMixin
+│   │   │   ├── company.py             # Company
+│   │   │   ├── user.py                # User, UserRole
+│   │   │   ├── role.py                # Role, Permission, RolePermission
+│   │   │   ├── entity.py              # Entity, EntityField (FieldType enum)
+│   │   │   ├── entity_record.py       # EntityRecord (JSONB data)
+│   │   │   ├── telegram.py            # TelegramBinding
+│   │   │   └── access_expiration.py   # AccessExpiration
+│   │   ├── repositories/              # Tenant-scoped репозитории
+│   │   ├── schemas/                   # Pydantic v2 request/response схемы
+│   │   ├── services/                  # Бизнес-логика
+│   │   ├── tasks/                     # Фоновые задачи (APScheduler)
+│   │   ├── config.py                  # pydantic-settings конфигурация
+│   │   ├── database.py                # AsyncEngine, AsyncSession
+│   │   ├── redis_client.py            # Redis-клиент
+│   │   └── main.py                    # FastAPI app, lifespan, middleware
+│   ├── alembic/
+│   │   ├── versions/                  # Файлы миграций
+│   │   └── env.py
+│   ├── alembic.ini
+│   ├── entrypoint.sh                  # alembic upgrade head + uvicorn
+│   ├── Dockerfile                     # Prod/dev образ backend
+│   └── requirements.txt
+│
+├── frontend/
+│   ├── src/
+│   │   ├── api/                       # Axios-клиенты (authApi, entitiesApi, ...)
+│   │   ├── components/                # Переиспользуемые UI-компоненты
+│   │   ├── hooks/                     # React Query хуки
+│   │   ├── layouts/                   # AppLayout, AuthLayout
+│   │   ├── pages/
+│   │   │   ├── auth/                  # Login, Register
+│   │   │   ├── dashboard/             # Главная страница
+│   │   │   ├── entities/              # Конструктор сущностей
+│   │   │   ├── records/               # Записи сущностей
+│   │   │   ├── users/                 # Управление пользователями
+│   │   │   ├── roles/                 # Управление ролями
+│   │   │   ├── settings/              # Настройки, Telegram-интеграция
+│   │   │   ├── access/                # Управление сроком доступа
+│   │   │   └── errors/                # 404, 403
+│   │   ├── router/                    # React Router: маршруты, guards
+│   │   ├── store/                     # Zustand: auth store
+│   │   ├── types/                     # TypeScript типы
+│   │   └── utils/                     # Вспомогательные функции
+│   ├── vite.config.ts                 # Vite config: proxy /api → BACKEND_URL
+│   ├── tailwind.config.ts
+│   ├── tsconfig.json
+│   ├── Dockerfile                     # Prod: build + nginx-static
+│   └── Dockerfile.dev                 # Dev: vite dev server
+│
+├── bot/
+│   ├── bot/
+│   │   ├── handlers/                  # /start, /connect команды
+│   │   ├── notifications/             # Redis pub/sub listener
+│   │   └── main.py                    # aiogram App, запуск polling/webhook
+│   ├── Dockerfile
+│   └── requirements.txt
+│
+├── nginx/
+│   ├── nginx.prod.conf                # HTTPS, proxy_pass backend/frontend
+│   └── ssl/                           # SSL-сертификаты (не в git)
+│       ├── cert.pem
+│       └── key.pem
+│
+├── docker-compose.dev.yml             # Dev: hot-reload, открытые порты
+├── docker-compose.prod.yml            # Prod: nginx, resource limits, no mounts
+├── README.md                          # Обзор проекта
+└── SETUP.md                           # Это руководство
 ```

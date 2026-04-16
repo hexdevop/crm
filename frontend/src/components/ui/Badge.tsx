@@ -44,7 +44,7 @@ export default function Badge({
 export function StatusBadge({ active }: { active: boolean }) {
   return (
     <Badge variant={active ? 'green' : 'red'} dot>
-      {active ? 'Active' : 'Inactive'}
+      {active ? 'Активен' : 'Неактивен'}
     </Badge>
   )
 }

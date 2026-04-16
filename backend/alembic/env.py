@@ -13,12 +13,10 @@ import app.models  # noqa: F401 — registers all models
 
 config = context.config
 
-# Override sqlalchemy.url from environment if set
+# Override sqlalchemy.url from environment variable if set.
+# This allows docker-compose to inject the correct host (postgres:5432)
+# while alembic.ini keeps a local-dev default.
 db_url = os.getenv("DATABASE_URL", config.get_main_option("sqlalchemy.url"))
-# Convert asyncpg URL to sync for Alembic if needed
-if db_url and "asyncpg" in db_url:
-    db_url_sync = db_url.replace("postgresql+asyncpg", "postgresql+asyncpg")
-
 config.set_main_option("sqlalchemy.url", db_url)
 
 if config.config_file_name is not None:

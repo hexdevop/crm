@@ -1,7 +1,10 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios'
 import { useAuthStore } from '@/store/auth.store'
 
-const BASE_URL = import.meta.env.VITE_API_URL || ''
+// BASE_URL is intentionally empty: all /api calls go through the Vite dev proxy
+// (which forwards to the backend) to avoid CORS issues. In production, nginx
+// handles the same reverse-proxy role. Never set VITE_API_URL in production.
+const BASE_URL = ''
 
 export const apiClient = axios.create({
   baseURL: `${BASE_URL}/api/v1`,
@@ -85,5 +88,5 @@ export function getApiError(error: unknown): string {
     if (typeof detail === 'string') return detail
     return error.message
   }
-  return 'An unexpected error occurred'
+  return 'Произошла неожиданная ошибка'
 }

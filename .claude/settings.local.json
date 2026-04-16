@@ -2,7 +2,15 @@
   "permissions": {
     "allow": [
       "Bash(dir E:/crm)",
-      "Bash(cmd /c \"dir E:\\\\crm 2>&1\")"
+      "Bash(cmd /c \"dir E:\\\\crm 2>&1\")",
+      "Bash(cmd /c \"dir /b /s E:\\\\crm\\\\frontend\\\\src 2>&1 | findstr /v __pycache__\")",
+      "Bash(cmd /c \"dir /b /s E:\\\\crm\\\\bot 2>&1\")",
+      "Bash(cmd /c \"dir E:\\\\crm\\\\frontend\\\\src /b /s\")",
+      "Bash(cmd /c \"type E:\\\\crm\\\\frontend\\\\src\\\\pages\\\\entities\\\\EntityBuilderPage.tsx\")",
+      "Bash(powershell -Command \"Get-Content 'E:\\\\crm\\\\frontend\\\\src\\\\pages\\\\entities\\\\EntityBuilderPage.tsx' | Select-Object -First 5\")",
+      "Bash(powershell -Command \"'' | Out-File -FilePath 'E:\\\\crm\\\\frontend\\\\src\\\\pages\\\\entities\\\\EntityBuilderPage.tsx' -Encoding utf8 -NoNewline\")",
+      "Bash(powershell -Command \"'' | Out-File -FilePath 'E:\\\\crm\\\\frontend\\\\src\\\\pages\\\\records\\\\RecordsPage.tsx' -Encoding utf8 -NoNewline; 'done'\")",
+      "Bash(ls E:/crm/*.md)"
     ]
   }
 }

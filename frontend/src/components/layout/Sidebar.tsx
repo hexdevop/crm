@@ -1,4 +1,4 @@
-import { NavLink, useNavigate } from 'react-router-dom'
+import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard,
   Users,
@@ -8,11 +8,12 @@ import {
   ChevronLeft,
   LogOut,
   Building2,
+  Clock,
   LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { useUIStore } from '@/store/ui.store'
-import { useAuthStore, useHasPermission } from '@/store/auth.store'
+import { useAuthStore, useHasPermission, useIsSuperAdmin } from '@/store/auth.store'
 import { useLogout } from '@/hooks/useAuth'
 import Avatar from '@/components/ui/Avatar'
 
@@ -20,19 +21,26 @@ interface NavItem {
   to: string
   label: string
   icon: LucideIcon
+  /** Require this permission code (skipped for superadmin) */
   permission?: string
+  /** Only render for superadmins */
+  superadminOnly?: boolean
 }
 
 const navItems: NavItem[] = [
-  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/users', label: 'Users', icon: Users, permission: 'manage_users' },
-  { to: '/roles', label: 'Roles', icon: Shield, permission: 'manage_roles' },
-  { to: '/entities', label: 'Entities', icon: Database },
-  { to: '/settings', label: 'Settings', icon: Settings },
+  { to: '/dashboard', label: 'Дашборд', icon: LayoutDashboard },
+  { to: '/users', label: 'Пользователи', icon: Users, permission: 'manage_users' },
+  { to: '/roles', label: 'Роли', icon: Shield, permission: 'manage_roles' },
+  { to: '/access-expiration', label: 'Временный доступ', icon: Clock, superadminOnly: true },
+  { to: '/entities', label: 'Сущности', icon: Database },
+  { to: '/settings', label: 'Настройки', icon: Settings },
 ]
 
 function NavItem({ item }: { item: NavItem }) {
+  const isSuperAdmin = useIsSuperAdmin()
   const hasPerm = !item.permission || useHasPermission(item.permission)
+
+  if (item.superadminOnly && !isSuperAdmin) return null
   if (!hasPerm) return null
 
   return (
@@ -87,7 +95,7 @@ export default function Sidebar() {
             <div>
               <div className="text-sm font-bold text-slate-900 leading-tight">CRM System</div>
               <div className="text-xs text-slate-500 truncate max-w-[130px]">
-                {user?.company?.name ?? ''}
+                {user?.company?.name ?? (user?.is_superadmin ? 'Суперадмин' : '')}
               </div>
             </div>
           </div>
@@ -119,7 +127,7 @@ export default function Sidebar() {
             <button
               onClick={() => logout.mutate()}
               className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
-              title="Logout"
+              title="Выйти"
             >
               <LogOut size={14} />
             </button>

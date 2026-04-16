@@ -35,9 +35,11 @@ class AccessExpirationService:
         if existing:
             raise ConflictException("User already has an expiration set. Use PATCH to update.")
 
+        # Use the target user's company_id, not the caller's (caller may be superadmin with None)
+        company_id = user.company_id if user.company_id else self.company_id
         exp = await self.repo.create(
             user_id=data.user_id,
-            company_id=self.company_id,
+            company_id=company_id,
             expires_at=data.expires_at,
         )
         await self.db.commit()

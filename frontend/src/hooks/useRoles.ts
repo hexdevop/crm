@@ -26,7 +26,7 @@ export function useCreateRole() {
     mutationFn: (data: RoleCreate) => rolesApi.create(data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['roles'] })
-      toast.success('Role created')
+      toast.success('Роль создана')
     },
     onError: (err) => toast.error(getApiError(err)),
   })
@@ -40,7 +40,7 @@ export function useUpdateRole() {
     onSuccess: (_, { id }) => {
       qc.invalidateQueries({ queryKey: ['roles'] })
       qc.invalidateQueries({ queryKey: ['roles', id] })
-      toast.success('Role updated')
+      toast.success('Роль обновлена')
     },
     onError: (err) => toast.error(getApiError(err)),
   })
@@ -52,7 +52,7 @@ export function useDeleteRole() {
     mutationFn: rolesApi.delete,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['roles'] })
-      toast.success('Role deleted')
+      toast.success('Роль удалена')
     },
     onError: (err) => toast.error(getApiError(err)),
   })
@@ -66,7 +66,7 @@ export function useUpdateRolePermissions() {
     onSuccess: (_, { id }) => {
       qc.invalidateQueries({ queryKey: ['roles'] })
       qc.invalidateQueries({ queryKey: ['roles', id] })
-      toast.success('Permissions updated')
+      toast.success('Права доступа обновлены')
     },
     onError: (err) => toast.error(getApiError(err)),
   })

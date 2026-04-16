@@ -22,7 +22,7 @@ export function useCreateEntity() {
     mutationFn: (data: EntityCreate) => entitiesApi.create(data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['entities'] })
-      toast.success('Entity created')
+      toast.success('Сущность создана')
     },
     onError: (err) => toast.error(getApiError(err)),
   })
@@ -36,7 +36,7 @@ export function useUpdateEntity() {
     onSuccess: (_, { id }) => {
       qc.invalidateQueries({ queryKey: ['entities'] })
       qc.invalidateQueries({ queryKey: ['entities', id] })
-      toast.success('Entity updated')
+      toast.success('Сущность обновлена')
     },
     onError: (err) => toast.error(getApiError(err)),
   })
@@ -48,7 +48,7 @@ export function useDeleteEntity() {
     mutationFn: entitiesApi.delete,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['entities'] })
-      toast.success('Entity deleted')
+      toast.success('Сущность удалена')
     },
     onError: (err) => toast.error(getApiError(err)),
   })
@@ -72,7 +72,7 @@ export function useCreateRecord() {
       entitiesApi.createRecord(entityId, data),
     onSuccess: (_, { entityId }) => {
       qc.invalidateQueries({ queryKey: ['records', entityId] })
-      toast.success('Record created')
+      toast.success('Запись создана')
     },
     onError: (err) => toast.error(getApiError(err)),
   })
@@ -92,7 +92,7 @@ export function useUpdateRecord() {
     }) => entitiesApi.updateRecord(entityId, recordId, data),
     onSuccess: (_, { entityId }) => {
       qc.invalidateQueries({ queryKey: ['records', entityId] })
-      toast.success('Record updated')
+      toast.success('Запись обновлена')
     },
     onError: (err) => toast.error(getApiError(err)),
   })
@@ -105,7 +105,7 @@ export function useDeleteRecord() {
       entitiesApi.deleteRecord(entityId, recordId),
     onSuccess: (_, { entityId }) => {
       qc.invalidateQueries({ queryKey: ['records', entityId] })
-      toast.success('Record deleted')
+      toast.success('Запись удалена')
     },
     onError: (err) => toast.error(getApiError(err)),
   })

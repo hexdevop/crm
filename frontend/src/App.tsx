@@ -22,6 +22,7 @@ import EntityBuilderPage from '@/pages/entities/EntityBuilderPage'
 import RecordsPage from '@/pages/records/RecordsPage'
 import RecordFormPage from '@/pages/records/RecordFormPage'
 import SettingsPage from '@/pages/settings/SettingsPage'
+import AccessExpirationPage from '@/pages/access/AccessExpirationPage'
 import NotFoundPage from '@/pages/errors/NotFoundPage'
 
 // Guards
@@ -65,6 +66,7 @@ function App() {
             <Route path="/entities/:entityId/records/new" element={<RecordFormPage />} />
             <Route path="/entities/:entityId/records/:recordId/edit" element={<RecordFormPage />} />
 
+            <Route path="/access-expiration" element={<AccessExpirationPage />} />
             <Route path="/settings" element={<SettingsPage />} />
           </Route>
         </Route>

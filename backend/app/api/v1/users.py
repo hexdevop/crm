@@ -1,7 +1,7 @@
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Header, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_current_user, require_permission
@@ -12,8 +12,23 @@ from app.schemas.common import MessageResponse
 from app.schemas.user import UserCreate, UserResponse, UserUpdate, UserPasswordChange
 from app.schemas.role import UserRoleAssign
 from app.services.user import UserService
+from app.config import settings
 
 router = APIRouter(prefix="/users", tags=["Users"])
+
+
+@router.get("/internal/by-company/{company_id}", response_model=list[UserResponse])
+async def list_users_internal(
+    company_id: uuid.UUID,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    x_internal_token: str | None = Header(default=None),
+):
+    """Internal endpoint for bot service to fetch company users with telegram_chat_id."""
+    if x_internal_token != settings.INTERNAL_BOT_TOKEN:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid internal token")
+    service = UserService(db, company_id)
+    users, _ = await service.list_users(offset=0, limit=500, is_active=True)
+    return [UserResponse.from_orm_with_roles(u) for u in users]
 
 
 @router.get("", response_model=PaginatedResponse[UserResponse])

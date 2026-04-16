@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     # Telegram
     BOT_TOKEN: str = ""
     WEBHOOK_URL: str = ""
+    INTERNAL_BOT_TOKEN: str = "crm-internal-bot-token-change-in-production"
 
     # CORS
     CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:5173"]
