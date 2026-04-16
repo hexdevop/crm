@@ -12,7 +12,7 @@ const schema = z.object({
   company_slug: z
     .string()
     .min(2)
-    .regex(/^[a-z0-9-]+$/, 'Только строчные буквы, цифры и дефис'),
+    .regex(/^[a-zа-яё0-9-]+$/, 'Только строчные буквы, цифры и дефис'),
   first_name: z.string().min(1, 'Обязательное поле'),
   last_name: z.string().min(1, 'Обязательное поле'),
   email: z.string().email('Неверный email'),
@@ -40,7 +40,7 @@ export default function RegisterPage() {
   const handleCompanyNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const slug = e.target.value
       .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/[^a-zа-яё0-9]+/g, '-')
       .replace(/^-|-$/g, '')
     setValue('company_slug', slug)
   }

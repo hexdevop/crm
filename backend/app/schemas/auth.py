@@ -41,8 +41,9 @@ class RegisterRequest(BaseModel):
     @classmethod
     def validate_slug(cls, v: str) -> str:
         import re
-        if not re.match(r"^[a-z0-9-]+$", v):
-            raise ValueError("Slug must contain only lowercase letters, digits, and hyphens")
+        v = v.lower()
+        if not re.match(r"^[a-zа-яё0-9-]+$", v):
+            raise ValueError("Slug must contain only lowercase letters (latin or cyrillic), digits, and hyphens")
         return v
 
 

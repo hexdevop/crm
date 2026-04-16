@@ -55,8 +55,27 @@ class EntityService:
 
     async def update_entity(self, entity_id: uuid.UUID, data: EntityUpdate):
         entity = await self.get_entity(entity_id)
-        for k, v in data.model_dump(exclude_none=True).items():
+
+        # Update metadata
+        update_data = data.model_dump(exclude_none=True)
+        fields_data = update_data.pop("fields", None)
+
+        for k, v in update_data.items():
             setattr(entity, k, v)
+
+        # Handle fields if provided
+        if fields_data is not None:
+            # Simple approach: remove all existing and recreate
+            # Better approach: match by ID/slug, but here fields in EntityUpdate might not have IDs
+            # Looking at frontend, it sends the full list of fields
+            await self.repo.delete_all_fields(entity_id)
+            for i, field_data in enumerate(fields_data):
+                # Convert dict to EntityFieldCreate if it's a dict
+                if isinstance(field_data, dict):
+                    field_data = EntityFieldCreate(**field_data)
+                field_data.position = i
+                await self._create_field_for_entity(entity.id, field_data)
+
         await self.db.commit()
         return await self.repo.get_by_id(entity_id)
 

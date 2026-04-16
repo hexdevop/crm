@@ -17,8 +17,9 @@ class EntityFieldCreate(BaseModel):
     @field_validator("slug")
     @classmethod
     def validate_slug(cls, v: str) -> str:
-        if not re.match(r"^[a-z0-9_]+$", v):
-            raise ValueError("Slug must contain only lowercase letters, digits, and underscores")
+        v = v.lower()
+        if not re.match(r"^[a-zа-яё0-9_]+$", v):
+            raise ValueError("Slug must contain only lowercase letters (latin or cyrillic), digits, and underscores")
         return v
 
     @field_validator("field_type")
@@ -68,8 +69,9 @@ class EntityCreate(BaseModel):
     @field_validator("slug")
     @classmethod
     def validate_slug(cls, v: str) -> str:
-        if not re.match(r"^[a-z0-9-]+$", v):
-            raise ValueError("Slug must contain only lowercase letters, digits, and hyphens")
+        v = v.lower()
+        if not re.match(r"^[a-zа-яё0-9-]+$", v):
+            raise ValueError("Slug must contain only lowercase letters (latin or cyrillic), digits, and hyphens")
         return v
 
     @field_validator("color")
@@ -82,9 +84,20 @@ class EntityCreate(BaseModel):
 
 class EntityUpdate(BaseModel):
     name: str | None = None
+    slug: str | None = None
     description: str | None = None
     icon: str | None = None
     color: str | None = None
+    fields: list[EntityFieldCreate] | None = None
+
+    @field_validator("slug")
+    @classmethod
+    def validate_slug(cls, v: str | None) -> str | None:
+        if v:
+            v = v.lower()
+            if not re.match(r"^[a-zа-яё0-9-]+$", v):
+                raise ValueError("Slug must contain only lowercase letters (latin or cyrillic), digits, and hyphens")
+        return v
 
 
 class EntityResponse(BaseModel):

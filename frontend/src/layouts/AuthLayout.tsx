@@ -40,7 +40,7 @@ export default function AuthLayout() {
           </div>
         </div>
 
-        <p className="text-white/40 text-sm">© 2024 CRM System. Дипломный проект.</p>
+        <p className="text-white/40 text-sm">© 2026 CRM System. Дипломный проект.</p>
       </div>
 
       {/* Right panel — form */}

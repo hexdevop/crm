@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import select, update
+from sqlalchemy import select, update, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.entity import Entity, EntityField
@@ -33,6 +33,12 @@ class EntityRepository(BaseRepository[Entity]):
         await self.db.flush()
         await self.db.refresh(field)
         return field
+
+    async def delete_all_fields(self, entity_id: uuid.UUID) -> None:
+        await self.db.execute(
+            delete(EntityField).where(EntityField.entity_id == entity_id)
+        )
+        await self.db.flush()
 
     async def get_field(
         self, entity_id: uuid.UUID, field_id: uuid.UUID

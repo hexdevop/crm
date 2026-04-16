@@ -59,7 +59,7 @@ function slugifyEntity(str: string) {
     .toLowerCase()
     .trim()
     .replace(/\s+/g, '-')
-    .replace(/[^a-z0-9-]/g, '')
+    .replace(/[^a-zа-яё0-9-]/g, '')
     .slice(0, 50)
 }
 
@@ -68,7 +68,7 @@ function slugifyField(str: string) {
     .toLowerCase()
     .trim()
     .replace(/\s+/g, '_')
-    .replace(/[^a-z0-9_]/g, '')
+    .replace(/[^a-zа-яё0-9_]/g, '')
     .slice(0, 50)
 }
 
@@ -320,7 +320,7 @@ export default function EntityBuilderPage() {
               <Input
                 label="Slug"
                 value={slug}
-                onChange={(e) => setSlug(e.target.value)}
+                onChange={(e) => setSlug(e.target.value.toLowerCase())}
                 placeholder="klienty"
                 hint="Уникальный идентификатор"
               />

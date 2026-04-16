@@ -4,6 +4,7 @@ from app.database import AsyncSessionLocal
 from app.redis_client import get_redis
 from app.repositories.access_expiration import AccessExpirationRepository
 from app.models.user import User
+from app.services.telegram import TelegramService
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +39,6 @@ async def check_and_block_expired_users():
 
                 # Send Telegram notification
                 try:
-                    from app.services.telegram import TelegramService
                     tg_service = TelegramService(db, user.company_id)
                     await tg_service.send_notification(
                         redis,
