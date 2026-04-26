@@ -10,7 +10,9 @@
       "Bash(powershell -Command \"Get-Content 'E:\\\\crm\\\\frontend\\\\src\\\\pages\\\\entities\\\\EntityBuilderPage.tsx' | Select-Object -First 5\")",
       "Bash(powershell -Command \"'' | Out-File -FilePath 'E:\\\\crm\\\\frontend\\\\src\\\\pages\\\\entities\\\\EntityBuilderPage.tsx' -Encoding utf8 -NoNewline\")",
       "Bash(powershell -Command \"'' | Out-File -FilePath 'E:\\\\crm\\\\frontend\\\\src\\\\pages\\\\records\\\\RecordsPage.tsx' -Encoding utf8 -NoNewline; 'done'\")",
-      "Bash(ls E:/crm/*.md)"
+      "Bash(ls E:/crm/*.md)",
+      "Bash(rtk ls *)",
+      "Bash(rtk git *)"
     ]
   }
 }
