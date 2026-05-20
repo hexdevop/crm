@@ -82,6 +82,18 @@ async def delete_role(
     await service.delete_role(role_id)
 
 
+@router.post("/{role_id}/set-default", response_model=RoleResponse)
+async def set_default_role(
+    role_id: uuid.UUID,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user=Depends(require_permission("manage_roles")),
+):
+    service = RoleService(db, current_user.company_id)
+    await service.set_default_role(role_id)
+    role = await service.get_role(role_id)
+    return RoleResponse.from_orm(role)
+
+
 @router.put("/{role_id}/permissions", response_model=RoleResponse)
 async def update_role_permissions(
     role_id: uuid.UUID,

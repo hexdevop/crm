@@ -44,6 +44,12 @@ class UserService:
             first_name=data.first_name,
             last_name=data.last_name,
         )
+
+        # Auto-assign default role if one is configured
+        default_role = await self.role_repo.get_default_role(self.company_id)
+        if default_role:
+            await self.role_repo.assign_role_to_user(user.id, default_role.id, None)
+
         await self.db.commit()
         return await self.repo.get_by_id_with_roles(user.id)
 

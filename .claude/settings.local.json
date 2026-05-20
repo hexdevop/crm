@@ -15,7 +15,12 @@
       "Bash(rtk git *)",
       "Bash(rtk grep *)",
       "Bash(xargs grep *)",
-      "Bash(rtk find *)"
+      "Bash(rtk find *)",
+      "Bash(docker compose *)",
+      "Bash(docker info *)",
+      "Bash(rtk docker *)",
+      "Bash(Start-Sleep -Seconds 5)",
+      "Bash(rtk read *)"
     ]
   }
 }

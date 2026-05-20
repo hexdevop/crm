@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Shield, Trash2, Lock } from 'lucide-react'
-import { useRoles, useCreateRole, useDeleteRole } from '@/hooks/useRoles'
+import { Plus, Shield, Trash2, Lock, Star } from 'lucide-react'
+import { useRoles, useCreateRole, useDeleteRole, useSetDefaultRole } from '@/hooks/useRoles'
 import PageHeader from '@/components/ui/PageHeader'
 import Button from '@/components/ui/Button'
 import Card from '@/components/ui/Card'
@@ -30,6 +30,7 @@ export default function RolesPage() {
   const { data: roles, isLoading } = useRoles()
   const createRole = useCreateRole()
   const deleteRole = useDeleteRole()
+  const setDefault = useSetDefaultRole()
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<CreateForm>({
     resolver: zodResolver(createSchema),
@@ -70,31 +71,45 @@ export default function RolesPage() {
             >
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-brand-50 flex items-center justify-center">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${role.is_default ? 'bg-amber-50' : 'bg-brand-50'}`}>
                     {role.is_system ? (
                       <Lock size={18} className="text-brand-600" />
                     ) : (
-                      <Shield size={18} className="text-brand-600" />
+                      <Shield size={18} className={role.is_default ? 'text-amber-500' : 'text-brand-600'} />
                     )}
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
                       <p className="font-semibold text-slate-900 text-sm">{role.name}</p>
                       {role.is_system && <Badge variant="gray">Системная</Badge>}
+                      {role.is_default && (
+                        <Badge variant="yellow">По умолчанию</Badge>
+                      )}
                     </div>
                     {role.description && (
                       <p className="text-xs text-slate-500 mt-0.5">{role.description}</p>
                     )}
                   </div>
                 </div>
-                {!role.is_system && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setDeleteTarget(role) }}
-                    className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                )}
+                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                  {!role.is_default && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setDefault.mutate(role.id) }}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-amber-500 hover:bg-amber-50 transition-colors"
+                      title="Сделать ролью по умолчанию"
+                    >
+                      <Star size={14} />
+                    </button>
+                  )}
+                  {!role.is_system && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setDeleteTarget(role) }}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
+                </div>
               </div>
               <div className="mt-4 pt-4 border-t border-slate-100">
                 <p className="text-xs text-slate-500 mb-2">Права доступа</p>

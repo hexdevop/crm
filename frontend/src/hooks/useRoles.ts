@@ -58,6 +58,18 @@ export function useDeleteRole() {
   })
 }
 
+export function useSetDefaultRole() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => rolesApi.setDefault(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['roles'] })
+      toast.success('Роль по умолчанию установлена')
+    },
+    onError: (err) => toast.error(getApiError(err)),
+  })
+}
+
 export function useUpdateRolePermissions() {
   const qc = useQueryClient()
   return useMutation({

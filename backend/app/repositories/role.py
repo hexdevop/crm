@@ -66,6 +66,23 @@ class RoleRepository(BaseRepository[Role]):
             self.db.add(rp)
         await self.db.flush()
 
+    async def get_default_role(self, company_id: uuid.UUID) -> Role | None:
+        result = await self.db.execute(
+            select(Role).where(
+                Role.company_id == company_id,
+                Role.is_default == True,
+            )
+        )
+        return result.scalar_one_or_none()
+
+    async def clear_default_role(self, company_id: uuid.UUID) -> None:
+        from sqlalchemy import update
+        await self.db.execute(
+            update(Role)
+            .where(Role.company_id == company_id)
+            .values(is_default=False)
+        )
+
     async def get_system_role(self, company_id: uuid.UUID, system_type: str) -> Role | None:
         result = await self.db.execute(
             select(Role).where(

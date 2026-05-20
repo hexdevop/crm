@@ -33,6 +33,7 @@ class RoleResponse(BaseModel):
     name: str
     description: str | None
     is_system: bool
+    is_default: bool
     system_type: str | None
     permissions: list[PermissionResponse] = []
     created_at: datetime
@@ -51,6 +52,7 @@ class RoleResponse(BaseModel):
             name=role.name,
             description=role.description,
             is_system=role.is_system,
+            is_default=role.is_default,
             system_type=role.system_type,
             permissions=permissions,
             created_at=role.created_at,

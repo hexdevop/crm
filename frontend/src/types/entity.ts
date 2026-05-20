@@ -1,4 +1,9 @@
-export type FieldType = 'text' | 'number' | 'date' | 'boolean' | 'select' | 'email' | 'phone'
+export type FieldType =
+  | 'text' | 'number' | 'date' | 'boolean' | 'select' | 'email' | 'phone'
+  | 'quantity_unit'  // число + единица измерения
+  | 'expiry_date'    // срок годности с уведомлениями
+  | 'barcode'        // штрихкод / QR-код
+  | 'relation'       // связь с другой сущностью
 
 export interface EntityField {
   id: string

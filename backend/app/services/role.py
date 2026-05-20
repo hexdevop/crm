@@ -93,5 +93,11 @@ class RoleService:
 
         return await self.repo.get_by_id_with_permissions(role_id)
 
+    async def set_default_role(self, role_id: uuid.UUID) -> None:
+        role = await self.get_role(role_id)
+        await self.repo.clear_default_role(self.company_id)
+        role.is_default = True
+        await self.db.commit()
+
     async def get_all_permissions(self):
         return await self.repo.get_all_permissions()

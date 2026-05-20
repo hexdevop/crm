@@ -2,7 +2,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useState } from 'react'
 import {
   Plus, Search, Trash2, Edit2, ChevronLeft, ChevronRight,
-  ArrowLeft, SlidersHorizontal,
+  ArrowLeft, SlidersHorizontal, Package,
 } from 'lucide-react'
 import { useEntity, useEntityRecords, useDeleteRecord } from '@/hooks/useEntities'
 import PageHeader from '@/components/ui/PageHeader'
@@ -13,7 +13,7 @@ import Badge from '@/components/ui/Badge'
 import EmptyState from '@/components/ui/EmptyState'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import Spinner from '@/components/ui/Spinner'
-import { format } from 'date-fns'
+import { format, differenceInDays } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import type { EntityRecord, EntityField } from '@/types/entity'
 
@@ -35,6 +35,28 @@ function formatValue(field: EntityField, value: unknown): React.ReactNode {
       try {
         return <span>{format(new Date(String(value)), 'dd MMM yyyy', { locale: ru })}</span>
       } catch { return <span>{String(value)}</span> }
+    case 'expiry_date': {
+      try {
+        const d = new Date(String(value))
+        const days = differenceInDays(d, new Date())
+        const label = format(d, 'dd.MM.yyyy')
+        if (days < 0) return <Badge variant="red">⛔ {label}</Badge>
+        if (days === 0) return <Badge variant="red">🔴 Сегодня</Badge>
+        const warnDays = (field.config as any)?.warn_days ?? 30
+        if (days <= warnDays) return <Badge variant="yellow">⚠️ {label} ({days}д)</Badge>
+        return <Badge variant="green">{label}</Badge>
+      } catch { return <span>{String(value)}</span> }
+    }
+    case 'quantity_unit': {
+      const v = value as any
+      if (v?.value !== undefined)
+        return <span className="font-medium">{v.value} <span className="text-slate-400 text-xs">{v.unit ?? ''}</span></span>
+      return <span>{String(value)}</span>
+    }
+    case 'barcode':
+      return <code className="text-xs font-mono bg-slate-100 px-1.5 py-0.5 rounded">{String(value)}</code>
+    case 'relation':
+      return <span className="text-xs font-mono text-slate-500">{String(value).slice(0, 8)}…</span>
     case 'email':
       return <a href={`mailto:${value}`} className="text-brand-600 hover:underline" onClick={(e) => e.stopPropagation()}>{String(value)}</a>
     case 'phone':
@@ -177,6 +199,18 @@ export default function RecordsPage() {
                       </td>
                       <td className="px-4 py-3.5" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={() => {
+                              navigate(`/entities/${entityId}/records/${record.id}/edit`)
+                              setTimeout(() => {
+                                const btn = document.querySelector<HTMLButtonElement>('[data-tab="movements"]')
+                                btn?.click()
+                              }, 100)
+                            }}
+                            className="p-1.5 rounded-lg hover:bg-emerald-50 text-slate-400 hover:text-emerald-600 transition-colors"
+                            title="Движения товара">
+                            <Package size={13} />
+                          </button>
                           <button
                             onClick={() => navigate(`/entities/${entityId}/records/${record.id}/edit`)}
                             className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-brand-600 transition-colors"

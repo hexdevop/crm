@@ -26,9 +26,12 @@ class EntityFieldCreate(BaseModel):
     @classmethod
     def validate_field_type(cls, v: str) -> str:
         v = v.lower()
-        allowed = {"text", "number", "date", "boolean", "select", "email", "phone"}
+        allowed = {
+            "text", "number", "date", "boolean", "select", "email", "phone",
+            "quantity_unit", "expiry_date", "barcode", "relation",
+        }
         if v not in allowed:
-            raise ValueError(f"field_type must be one of: {', '.join(allowed)}")
+            raise ValueError(f"field_type must be one of: {', '.join(sorted(allowed))}")
         return v
 
 

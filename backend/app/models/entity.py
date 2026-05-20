@@ -22,6 +22,10 @@ class FieldType(str, enum.Enum):
     select = "select"
     email = "email"
     phone = "phone"
+    quantity_unit = "quantity_unit"   # число + единица измерения
+    expiry_date = "expiry_date"       # срок годности с уведомлениями
+    barcode = "barcode"               # штрихкод / QR
+    relation = "relation"             # связь с другой сущностью
 
 
 class Entity(Base, TimestampMixin):

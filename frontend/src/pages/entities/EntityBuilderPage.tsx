@@ -1,7 +1,7 @@
 import { useNavigate, useParams } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { ArrowLeft, Plus, Trash2, GripVertical, Save, X, ChevronDown, ChevronUp } from 'lucide-react'
-import { useEntity, useCreateEntity, useUpdateEntity } from '@/hooks/useEntities'
+import { useEntity, useCreateEntity, useUpdateEntity, useEntities } from '@/hooks/useEntities'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import Card, { CardHeader, CardBody } from '@/components/ui/Card'
@@ -20,13 +20,17 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 
 const FIELD_TYPES: { type: FieldType; label: string; icon: string; desc: string }[] = [
-  { type: 'text',    label: 'Текст',    icon: '📝', desc: 'Строка текста' },
-  { type: 'number',  label: 'Число',    icon: '🔢', desc: 'Числовое значение' },
-  { type: 'email',   label: 'Email',    icon: '📧', desc: 'Адрес эл. почты' },
-  { type: 'phone',   label: 'Телефон',  icon: '📱', desc: 'Номер телефона' },
-  { type: 'date',    label: 'Дата',     icon: '📅', desc: 'Дата (ГГГГ-ММ-ДД)' },
-  { type: 'boolean', label: 'Да / Нет', icon: '✅', desc: 'Флаг / чекбокс' },
-  { type: 'select',  label: 'Список',   icon: '📋', desc: 'Выпадающий список' },
+  { type: 'text',          label: 'Текст',          icon: '📝', desc: 'Строка текста' },
+  { type: 'number',        label: 'Число',          icon: '🔢', desc: 'Числовое значение' },
+  { type: 'quantity_unit', label: 'Количество + ед.', icon: '⚖️', desc: 'Число с единицей измерения' },
+  { type: 'email',         label: 'Email',          icon: '📧', desc: 'Адрес эл. почты' },
+  { type: 'phone',         label: 'Телефон',        icon: '📱', desc: 'Номер телефона' },
+  { type: 'date',          label: 'Дата',           icon: '📅', desc: 'Дата (ГГГГ-ММ-ДД)' },
+  { type: 'expiry_date',   label: 'Срок годности',  icon: '⏰', desc: 'Дата + уведомление об истечении' },
+  { type: 'boolean',       label: 'Да / Нет',       icon: '✅', desc: 'Флаг / чекбокс' },
+  { type: 'select',        label: 'Список',         icon: '📋', desc: 'Выпадающий список' },
+  { type: 'barcode',       label: 'Штрихкод / QR',  icon: '🔲', desc: 'Штрихкод или QR-код товара' },
+  { type: 'relation',      label: 'Связь',          icon: '🔗', desc: 'Ссылка на запись другой сущности' },
 ]
 
 const COLORS = ['#6366f1','#8b5cf6','#ec4899','#ef4444','#f97316','#eab308','#22c55e','#06b6d4','#3b82f6','#64748b']
@@ -128,12 +132,123 @@ function NumberConfigEditor({ config, onChange }: {
   )
 }
 
+// ─── EXPIRY DATE Config Editor ──────────────────────────────────────────────
+function ExpiryConfigEditor({ config, onChange }: {
+  config: Record<string, unknown>
+  onChange: (c: Record<string, unknown>) => void
+}) {
+  return (
+    <div className="mt-3 space-y-2">
+      <div>
+        <label className="text-xs text-slate-500 mb-1 block">Уведомлять за N дней до истечения</label>
+        <input type="number" min="1" max="365"
+          className="text-xs border border-slate-200 rounded px-2 py-1.5 w-full bg-white focus:outline-none focus:ring-1 focus:ring-brand-500"
+          placeholder="30"
+          value={config.warn_days !== undefined ? String(config.warn_days) : ''}
+          onChange={(e) => onChange({ ...config, warn_days: e.target.value === '' ? 30 : Number(e.target.value) })} />
+      </div>
+    </div>
+  )
+}
+
+// ─── QUANTITY_UNIT Config Editor ─────────────────────────────────────────────
+function QuantityUnitConfigEditor({ config, onChange }: {
+  config: Record<string, unknown>
+  onChange: (c: Record<string, unknown>) => void
+}) {
+  const units: string[] = (config.units as string[]) ?? ['шт', 'кг', 'л', 'м', 'м²', 'м³']
+  const addUnit = (u: string) => {
+    if (u && !units.includes(u)) onChange({ ...config, units: [...units, u] })
+  }
+  const removeUnit = (u: string) => onChange({ ...config, units: units.filter((x) => x !== u) })
+  return (
+    <div className="mt-3 space-y-2">
+      <div>
+        <label className="text-xs text-slate-500 mb-1 block">Единица по умолчанию</label>
+        <input className="text-xs border border-slate-200 rounded px-2 py-1.5 w-full bg-white focus:outline-none focus:ring-1 focus:ring-brand-500"
+          placeholder="шт"
+          value={String(config.default_unit ?? '')}
+          onChange={(e) => onChange({ ...config, default_unit: e.target.value })} />
+      </div>
+      <div>
+        <label className="text-xs text-slate-500 mb-1 block">Доступные единицы</label>
+        <div className="flex flex-wrap gap-1 mb-1">
+          {units.map((u) => (
+            <span key={u} className="inline-flex items-center gap-1 bg-slate-100 rounded px-2 py-0.5 text-xs">
+              {u}
+              <button type="button" onClick={() => removeUnit(u)} className="text-slate-400 hover:text-red-500">
+                <X size={10} />
+              </button>
+            </span>
+          ))}
+        </div>
+        <input className="text-xs border border-slate-200 rounded px-2 py-1.5 w-full bg-white focus:outline-none focus:ring-1 focus:ring-brand-500"
+          placeholder="Добавить единицу..."
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') { e.preventDefault(); addUnit(e.currentTarget.value.trim()); e.currentTarget.value = '' }
+          }} />
+        <p className="text-xs text-slate-400 mt-0.5">Нажмите Enter чтобы добавить</p>
+      </div>
+    </div>
+  )
+}
+
+// ─── RELATION Config Editor ──────────────────────────────────────────────────
+function RelationConfigEditor({ config, onChange, currentEntityId }: {
+  config: Record<string, unknown>
+  onChange: (c: Record<string, unknown>) => void
+  currentEntityId?: string
+}) {
+  const { data: entities } = useEntities()
+  const available = entities?.filter((e) => e.id !== currentEntityId) ?? []
+  const selectedEntity = available.find((e) => e.id === config.entity_id)
+
+  return (
+    <div className="mt-3 space-y-2">
+      <div>
+        <label className="text-xs text-slate-500 mb-1 block">Связанная сущность</label>
+        <select
+          className="text-xs border border-slate-200 rounded px-2 py-1.5 w-full bg-white focus:outline-none focus:ring-1 focus:ring-brand-500"
+          value={String(config.entity_id ?? '')}
+          onChange={(e) => {
+            const ent = available.find((x) => x.id === e.target.value)
+            onChange({ ...config, entity_id: e.target.value, entity_name: ent?.name ?? '' })
+          }}
+        >
+          <option value="">— выберите —</option>
+          {available.map((e) => (
+            <option key={e.id} value={e.id}>{e.icon ?? '📋'} {e.name}</option>
+          ))}
+        </select>
+      </div>
+      {selectedEntity && (
+        <div>
+          <label className="text-xs text-slate-500 mb-1 block">Отображаемое поле</label>
+          <select
+            className="text-xs border border-slate-200 rounded px-2 py-1.5 w-full bg-white focus:outline-none focus:ring-1 focus:ring-brand-500"
+            value={String(config.display_field ?? '')}
+            onChange={(e) => onChange({ ...config, display_field: e.target.value })}
+          >
+            <option value="">— выберите поле —</option>
+            {selectedEntity.fields.map((f) => (
+              <option key={f.id} value={f.slug}>{f.name} ({f.field_type})</option>
+            ))}
+          </select>
+        </div>
+      )}
+    </div>
+  )
+}
+
+const FIELDS_WITH_CONFIG = new Set(['select', 'number', 'expiry_date', 'quantity_unit', 'relation'])
+
 // ─── Sortable Field Row ─────────────────────────────────────────────────────
-function SortableField({ field, updateField, removeField, toggleExpand }: {
+function SortableField({ field, updateField, removeField, toggleExpand, currentEntityId }: {
   field: FieldDraft
   updateField: (id: string, p: Partial<FieldDraft>) => void
   removeField: (id: string) => void
   toggleExpand: (id: string) => void
+  currentEntityId?: string
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: field._id })
@@ -144,7 +259,7 @@ function SortableField({ field, updateField, removeField, toggleExpand }: {
   const ft = FIELD_TYPES.find((t) => t.type === field.field_type)
   const options: SelectOption[] = (field.config as any)?.options ?? []
   const numConfig: Record<string, unknown> = (field.config as any) ?? {}
-  const hasConfig = field.field_type === 'select' || field.field_type === 'number'
+  const hasConfig = FIELDS_WITH_CONFIG.has(field.field_type)
 
   return (
     <div ref={setNodeRef} style={style}
@@ -220,6 +335,18 @@ function SortableField({ field, updateField, removeField, toggleExpand }: {
             <NumberConfigEditor config={numConfig}
               onChange={(c) => updateField(field._id, { config: c })} />
           )}
+          {field.field_type === 'expiry_date' && (
+            <ExpiryConfigEditor config={numConfig}
+              onChange={(c) => updateField(field._id, { config: c })} />
+          )}
+          {field.field_type === 'quantity_unit' && (
+            <QuantityUnitConfigEditor config={numConfig}
+              onChange={(c) => updateField(field._id, { config: c })} />
+          )}
+          {field.field_type === 'relation' && (
+            <RelationConfigEditor config={numConfig} currentEntityId={currentEntityId}
+              onChange={(c) => updateField(field._id, { config: c })} />
+          )}
         </div>
       )}
     </div>
@@ -272,6 +399,14 @@ export default function EntityBuilderPage() {
     )
   }, [existing])
 
+  const DEFAULT_CONFIGS: Partial<Record<FieldType, Record<string, unknown>>> = {
+    select: { options: [{ value: 'option_1', label: 'Вариант 1' }] },
+    number: {},
+    expiry_date: { warn_days: 30 },
+    quantity_unit: { default_unit: 'шт', units: ['шт', 'кг', 'л', 'м', 'м²', 'м³'] },
+    relation: {},
+  }
+
   const addField = (type: FieldType) => {
     const label = FIELD_TYPES.find((t) => t.type === type)?.label ?? type
     const n = fields.length + 1
@@ -283,9 +418,8 @@ export default function EntityBuilderPage() {
       is_required: false,
       is_searchable: true,
       position: prev.length,
-      config: type === 'select' ? { options: [{ value: 'option_1', label: 'Вариант 1' }] }
-             : type === 'number' ? {} : undefined,
-      _expanded: type === 'select' || type === 'number',
+      config: DEFAULT_CONFIGS[type],
+      _expanded: FIELDS_WITH_CONFIG.has(type),
     }])
   }
 
@@ -435,7 +569,8 @@ export default function EntityBuilderPage() {
                 <SortableContext items={fields.map((f) => f._id)} strategy={verticalListSortingStrategy}>
                   {fields.map((field) => (
                     <SortableField key={field._id} field={field}
-                      updateField={updateField} removeField={removeField} toggleExpand={toggleExpand} />
+                      updateField={updateField} removeField={removeField}
+                      toggleExpand={toggleExpand} currentEntityId={id} />
                   ))}
                 </SortableContext>
               </DndContext>

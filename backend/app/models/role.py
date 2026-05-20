@@ -42,6 +42,7 @@ class Role(Base, TimestampMixin):
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
     is_system: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    is_default: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     # system role type: owner | admin | manager | employee
     system_type: Mapped[str | None] = mapped_column(String(50))
 

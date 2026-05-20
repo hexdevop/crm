@@ -10,6 +10,7 @@ export interface Role {
   name: string
   description: string | null
   is_system: boolean
+  is_default: boolean
   system_type: string | null
   permissions: Permission[]
   created_at: string

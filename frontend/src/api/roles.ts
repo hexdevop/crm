@@ -20,6 +20,9 @@ export const rolesApi = {
   updatePermissions: (id: string, permissionIds: string[]) =>
     apiClient.put<Role>(`/roles/${id}/permissions`, { permission_ids: permissionIds }).then((r) => r.data),
 
+  setDefault: (id: string) =>
+    apiClient.post<Role>(`/roles/${id}/set-default`).then((r) => r.data),
+
   listPermissions: () =>
     apiClient.get<Permission[]>('/roles/permissions').then((r) => r.data),
 }
