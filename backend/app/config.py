@@ -35,6 +35,10 @@ class Settings(BaseSettings):
     SUPERADMIN_EMAIL: str = "admin@crm.local"
     SUPERADMIN_PASSWORD: str = "Admin123!"
 
+    # File uploads
+    UPLOAD_DIR: str = "./uploads"
+    MAX_UPLOAD_SIZE_MB: int = 10
+
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
     def parse_cors(cls, v):

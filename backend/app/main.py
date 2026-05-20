@@ -1,9 +1,11 @@
 import logging
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.api.router import api_router
 from app.config import settings
@@ -117,6 +119,11 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 # Include all routes
 app.include_router(api_router)
+
+# Serve uploaded files as static
+_upload_dir = os.path.abspath(settings.UPLOAD_DIR)
+os.makedirs(_upload_dir, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=_upload_dir), name="uploads")
 
 
 @app.get("/health", tags=["Health"])

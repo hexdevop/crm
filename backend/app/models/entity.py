@@ -22,10 +22,17 @@ class FieldType(str, enum.Enum):
     select = "select"
     email = "email"
     phone = "phone"
-    quantity_unit = "quantity_unit"   # число + единица измерения
-    expiry_date = "expiry_date"       # срок годности с уведомлениями
-    barcode = "barcode"               # штрихкод / QR
-    relation = "relation"             # связь с другой сущностью
+    quantity_unit = "quantity_unit"           # число + единица измерения
+    expiry_date = "expiry_date"               # срок годности с уведомлениями
+    barcode = "barcode"                       # штрихкод / QR
+    relation = "relation"                     # связь с другой сущностью
+    image = "image"                           # фото / изображение
+    price = "price"                           # цена с валютой
+    autoincrement = "autoincrement"           # автоинкремент / артикул
+    formula = "formula"                       # вычисляемое поле
+    warehouse_location = "warehouse_location" # адрес ячейки на складе
+    file = "file"                             # файл / документ
+    status = "status"                         # статус с цветом
 
 
 class Entity(Base, TimestampMixin):

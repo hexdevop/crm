@@ -20,7 +20,14 @@
       "Bash(docker info *)",
       "Bash(rtk docker *)",
       "Bash(Start-Sleep -Seconds 5)",
-      "Bash(rtk read *)"
+      "Bash(rtk read *)",
+      "Bash(Get-ChildItem -Path \"E:\\\\crm\" -Force)",
+      "Bash(Select-Object Name, PSIsContainer)",
+      "Bash(rtk tsc *)",
+      "Bash(cmd.exe /c \"cd E:\\\\crm\\\\frontend && npx tsc --noEmit 2>&1\")",
+      "Bash(cmd.exe /c \"cd /d E:\\\\crm\\\\frontend && npx tsc --noEmit 2>&1\")",
+      "Bash(cmd.exe /c \"cd /d E:\\\\crm\\\\frontend && npx tsc --noEmit\")",
+      "Bash(cmd.exe *)"
     ]
   }
 }

@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom'
-import { useEffect, useState } from 'react'
-import { ArrowLeft, Save, Package } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { ArrowLeft, Save, Package, Upload, X, FileText } from 'lucide-react'
 import { useEntity, useCreateRecord, useUpdateRecord } from '@/hooks/useEntities'
 import { entitiesApi } from '@/api/entities'
 import { useQuery } from '@tanstack/react-query'
@@ -69,6 +69,104 @@ function RelationPicker({
           )
         })}
       </select>
+    </div>
+  )
+}
+
+// ─── ImageUploader ───────────────────────────────────────────────────────────
+function ImageUploader({ field, value, onChange }: {
+  field: EntityField; value: unknown; onChange: (v: unknown) => void
+}) {
+  const imgRef = useRef<HTMLInputElement>(null)
+  const [uploading, setUploading] = useState(false)
+  const handleUpload = async (file: File) => {
+    setUploading(true)
+    try {
+      const result = await entitiesApi.uploadImage(file)
+      onChange(result.url)
+    } catch {
+      toast.error('Ошибка загрузки изображения')
+    } finally {
+      setUploading(false)
+    }
+  }
+  return (
+    <div>
+      <label className="label">
+        {field.name}
+        {field.is_required && <span className="text-red-500 ml-0.5">*</span>}
+      </label>
+      <div className="space-y-2">
+        {value ? (
+          <div className="relative inline-block">
+            <img src={String(value)} alt={field.name}
+              className="h-32 w-32 object-cover rounded-xl border border-slate-200" />
+            <button type="button" onClick={() => onChange('')}
+              className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5 hover:bg-red-600">
+              <X size={12} />
+            </button>
+          </div>
+        ) : (
+          <div onClick={() => imgRef.current?.click()}
+            className="flex flex-col items-center justify-center w-32 h-32 border-2 border-dashed border-slate-300 rounded-xl cursor-pointer hover:border-brand-400 hover:bg-brand-50 transition-colors">
+            {uploading ? <Spinner size="sm" /> : (
+              <>
+                <Upload size={20} className="text-slate-400 mb-1" />
+                <span className="text-xs text-slate-400">Загрузить фото</span>
+              </>
+            )}
+          </div>
+        )}
+        <input ref={imgRef} type="file" accept="image/*" className="hidden"
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUpload(f) }} />
+      </div>
+    </div>
+  )
+}
+
+// ─── FileUploader ─────────────────────────────────────────────────────────────
+function FileUploader({ field, value, onChange }: {
+  field: EntityField; value: unknown; onChange: (v: unknown) => void
+}) {
+  const fileRef = useRef<HTMLInputElement>(null)
+  const [uploading, setUploading] = useState(false)
+  const fileUrl = String(value ?? '')
+  const fileName = fileUrl ? decodeURIComponent(fileUrl.split('/').pop() ?? 'файл') : ''
+  const handleUpload = async (file: File) => {
+    setUploading(true)
+    try {
+      const result = await entitiesApi.uploadFile(file)
+      onChange(result.url)
+      toast.success(`Файл загружен: ${result.original_name}`)
+    } catch {
+      toast.error('Ошибка загрузки файла')
+    } finally {
+      setUploading(false)
+    }
+  }
+  return (
+    <div>
+      <label className="label">
+        {field.name}
+        {field.is_required && <span className="text-red-500 ml-0.5">*</span>}
+      </label>
+      {fileUrl ? (
+        <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
+          <FileText size={16} className="text-slate-400 shrink-0" />
+          <a href={fileUrl} target="_blank" rel="noreferrer"
+            className="flex-1 text-sm text-brand-600 hover:underline truncate">{fileName}</a>
+          <button type="button" onClick={() => onChange('')}
+            className="text-slate-400 hover:text-red-500 shrink-0"><X size={14} /></button>
+        </div>
+      ) : (
+        <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading}
+          className="flex items-center gap-2 px-4 py-2.5 border-2 border-dashed border-slate-300 rounded-xl text-sm text-slate-500 hover:border-brand-400 hover:text-brand-600 hover:bg-brand-50 transition-colors disabled:opacity-50">
+          {uploading ? <Spinner size="sm" /> : <Upload size={14} />}
+          Прикрепить файл (PDF, Word, Excel...)
+        </button>
+      )}
+      <input ref={fileRef} type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,image/*" className="hidden"
+        onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUpload(f) }} />
     </div>
   )
 }
@@ -232,6 +330,139 @@ function FieldInput({
 
     case 'relation':
       return <RelationPicker field={field} value={value} onChange={onChange} />
+
+    case 'price': {
+      const currency = (field.config as any)?.currency ?? 'UZS'
+      const symbol = (field.config as any)?.symbol ?? 'сум'
+      const decimals = (field.config as any)?.decimals ?? 2
+      return (
+        <div>
+          <label className="label">
+            {field.name}
+            {field.is_required && <span className="text-red-500 ml-0.5">*</span>}
+          </label>
+          <div className="flex items-center gap-0">
+            <span className="inline-flex items-center px-3 h-10 bg-slate-100 border border-r-0 border-slate-200 rounded-l-xl text-sm text-slate-500 shrink-0">
+              {symbol}
+            </span>
+            <input
+              type="number"
+              step={decimals > 0 ? `0.${'0'.repeat(decimals - 1)}1` : '1'}
+              min="0"
+              className="input rounded-l-none flex-1"
+              placeholder="0"
+              value={String(value ?? '')}
+              onChange={(e) => onChange(e.target.value === '' ? '' : Number(e.target.value))}
+            />
+            <span className="inline-flex items-center px-3 h-10 bg-slate-100 border border-l-0 border-slate-200 rounded-r-xl text-sm text-slate-400 shrink-0">
+              {currency}
+            </span>
+          </div>
+        </div>
+      )
+    }
+
+    case 'autoincrement':
+      return (
+        <div>
+          <label className="label">
+            {field.name}
+            <span className="ml-2 text-xs text-slate-400 font-normal">(генерируется автоматически)</span>
+          </label>
+          <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-xl border border-slate-200">
+            <span className="text-xs text-slate-400">🔖</span>
+            <span className="text-sm text-slate-500 italic">
+              {value ? String(value) : 'Будет назначен при создании'}
+            </span>
+          </div>
+        </div>
+      )
+
+    case 'formula':
+      return (
+        <div>
+          <label className="label">
+            {field.name}
+            <span className="ml-2 text-xs text-slate-400 font-normal">(вычисляется автоматически)</span>
+          </label>
+          <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-xl border border-blue-200">
+            <span className="text-xs text-blue-400">🧮</span>
+            <span className="text-sm font-medium text-blue-700">
+              {value !== null && value !== undefined && value !== '' ? String(value) : '—'}
+            </span>
+          </div>
+        </div>
+      )
+
+    case 'warehouse_location': {
+      const placeholder = (field.config as any)?.placeholder ?? 'А-12-3'
+      return (
+        <div>
+          <label className="label">
+            {field.name}
+            {field.is_required && <span className="text-red-500 ml-0.5">*</span>}
+          </label>
+          <div className="flex items-center gap-0">
+            <span className="inline-flex items-center px-3 h-10 bg-slate-100 border border-r-0 border-slate-200 rounded-l-xl text-base shrink-0">
+              📍
+            </span>
+            <input
+              className="input rounded-l-none flex-1 font-mono"
+              placeholder={placeholder}
+              value={String(value ?? '')}
+              onChange={(e) => onChange(e.target.value)}
+            />
+          </div>
+        </div>
+      )
+    }
+
+    case 'status': {
+      const options = (field.config as any)?.options ?? []
+      return (
+        <div>
+          <label className="label">
+            {field.name}
+            {field.is_required && <span className="text-red-500 ml-0.5">*</span>}
+          </label>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => onChange('')}
+              className={`px-3 py-1.5 rounded-lg text-sm border transition-all ${
+                !value ? 'bg-slate-100 border-slate-300 text-slate-600' : 'border-transparent text-slate-400 hover:bg-slate-50'
+              }`}
+            >
+              — не выбрано
+            </button>
+            {options.map((opt: any) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => onChange(opt.value)}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium border-2 transition-all ${
+                  value === opt.value ? 'ring-2 ring-offset-1' : 'opacity-70 hover:opacity-100'
+                }`}
+                style={{
+                  backgroundColor: value === opt.value ? opt.color + '22' : 'transparent',
+                  borderColor: opt.color,
+                  color: opt.color,
+                  ['--tw-ring-color' as string]: opt.color,
+                }}
+              >
+                ● {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )
+    }
+
+    case 'image':
+      return <ImageUploader field={field} value={value} onChange={onChange} />
+
+    case 'file':
+      return <FileUploader field={field} value={value} onChange={onChange} />
 
     default:
       return (

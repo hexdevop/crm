@@ -20,17 +20,24 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 
 const FIELD_TYPES: { type: FieldType; label: string; icon: string; desc: string }[] = [
-  { type: 'text',          label: 'Текст',          icon: '📝', desc: 'Строка текста' },
-  { type: 'number',        label: 'Число',          icon: '🔢', desc: 'Числовое значение' },
-  { type: 'quantity_unit', label: 'Количество + ед.', icon: '⚖️', desc: 'Число с единицей измерения' },
-  { type: 'email',         label: 'Email',          icon: '📧', desc: 'Адрес эл. почты' },
-  { type: 'phone',         label: 'Телефон',        icon: '📱', desc: 'Номер телефона' },
-  { type: 'date',          label: 'Дата',           icon: '📅', desc: 'Дата (ГГГГ-ММ-ДД)' },
-  { type: 'expiry_date',   label: 'Срок годности',  icon: '⏰', desc: 'Дата + уведомление об истечении' },
-  { type: 'boolean',       label: 'Да / Нет',       icon: '✅', desc: 'Флаг / чекбокс' },
-  { type: 'select',        label: 'Список',         icon: '📋', desc: 'Выпадающий список' },
-  { type: 'barcode',       label: 'Штрихкод / QR',  icon: '🔲', desc: 'Штрихкод или QR-код товара' },
-  { type: 'relation',      label: 'Связь',          icon: '🔗', desc: 'Ссылка на запись другой сущности' },
+  { type: 'text',               label: 'Текст',              icon: '📝', desc: 'Строка текста' },
+  { type: 'number',             label: 'Число',              icon: '🔢', desc: 'Числовое значение' },
+  { type: 'price',              label: 'Цена / Валюта',      icon: '💰', desc: 'Число с валютой и форматированием' },
+  { type: 'quantity_unit',      label: 'Количество + ед.',   icon: '⚖️', desc: 'Число с единицей измерения' },
+  { type: 'autoincrement',      label: 'Артикул (авто №)',   icon: '🔖', desc: 'Автоматически генерируемый уникальный номер' },
+  { type: 'formula',            label: 'Формула',            icon: '🧮', desc: 'Вычисляемое поле (Сумма = Кол × Цена)' },
+  { type: 'email',              label: 'Email',              icon: '📧', desc: 'Адрес эл. почты' },
+  { type: 'phone',              label: 'Телефон',            icon: '📱', desc: 'Номер телефона' },
+  { type: 'date',               label: 'Дата',               icon: '📅', desc: 'Дата (ГГГГ-ММ-ДД)' },
+  { type: 'expiry_date',        label: 'Срок годности',      icon: '⏰', desc: 'Дата + уведомление об истечении' },
+  { type: 'boolean',            label: 'Да / Нет',           icon: '✅', desc: 'Флаг / чекбокс' },
+  { type: 'select',             label: 'Список',             icon: '📋', desc: 'Выпадающий список' },
+  { type: 'status',             label: 'Статус',             icon: '🚦', desc: 'Статус с цветовой индикацией' },
+  { type: 'image',              label: 'Фото / Изображение', icon: '🖼️', desc: 'Загрузка фотографии товара' },
+  { type: 'file',               label: 'Файл / Документ',   icon: '📎', desc: 'Прикрепить накладную, сертификат, паспорт' },
+  { type: 'warehouse_location', label: 'Ячейка на складе',  icon: '📍', desc: 'Адрес хранения: Стеллаж-Полка-Ячейка' },
+  { type: 'barcode',            label: 'Штрихкод / QR',     icon: '🔲', desc: 'Штрихкод или QR-код товара' },
+  { type: 'relation',           label: 'Связь',              icon: '🔗', desc: 'Ссылка на запись другой сущности' },
 ]
 
 const COLORS = ['#6366f1','#8b5cf6','#ec4899','#ef4444','#f97316','#eab308','#22c55e','#06b6d4','#3b82f6','#64748b']
@@ -240,15 +247,208 @@ function RelationConfigEditor({ config, onChange, currentEntityId }: {
   )
 }
 
-const FIELDS_WITH_CONFIG = new Set(['select', 'number', 'expiry_date', 'quantity_unit', 'relation'])
+// ─── PRICE Config Editor ─────────────────────────────────────────────────────
+function PriceConfigEditor({ config, onChange }: {
+  config: Record<string, unknown>
+  onChange: (c: Record<string, unknown>) => void
+}) {
+  const CURRENCIES = [
+    { code: 'UZS', symbol: 'сум' }, { code: 'USD', symbol: '$' },
+    { code: 'EUR', symbol: '€' }, { code: 'RUB', symbol: '₽' },
+    { code: 'KZT', symbol: '₸' },
+  ]
+  return (
+    <div className="mt-3 grid grid-cols-2 gap-3">
+      <div>
+        <label className="text-xs text-slate-500 mb-1 block">Валюта</label>
+        <select
+          className="text-xs border border-slate-200 rounded px-2 py-1.5 w-full bg-white focus:outline-none focus:ring-1 focus:ring-brand-500"
+          value={String(config.currency ?? 'UZS')}
+          onChange={(e) => {
+            const cur = CURRENCIES.find((c) => c.code === e.target.value)
+            onChange({ ...config, currency: e.target.value, symbol: cur?.symbol ?? e.target.value })
+          }}
+        >
+          {CURRENCIES.map((c) => (
+            <option key={c.code} value={c.code}>{c.code} — {c.symbol}</option>
+          ))}
+        </select>
+      </div>
+      <div>
+        <label className="text-xs text-slate-500 mb-1 block">Знаков после запятой</label>
+        <input type="number" min="0" max="4"
+          className="text-xs border border-slate-200 rounded px-2 py-1.5 w-full bg-white focus:outline-none focus:ring-1 focus:ring-brand-500"
+          placeholder="2"
+          value={config.decimals !== undefined ? String(config.decimals) : ''}
+          onChange={(e) => onChange({ ...config, decimals: e.target.value === '' ? 2 : Number(e.target.value) })} />
+      </div>
+    </div>
+  )
+}
+
+// ─── AUTOINCREMENT Config Editor ─────────────────────────────────────────────
+function AutoincrementConfigEditor({ config, onChange }: {
+  config: Record<string, unknown>
+  onChange: (c: Record<string, unknown>) => void
+}) {
+  return (
+    <div className="mt-3 space-y-2">
+      <div className="p-2.5 bg-amber-50 rounded-lg border border-amber-200 text-xs text-amber-700">
+        Значение генерируется автоматически при создании записи. Пользователь не может его изменить.
+      </div>
+      <div className="grid grid-cols-3 gap-2">
+        <div>
+          <label className="text-xs text-slate-500 mb-1 block">Префикс</label>
+          <input className="text-xs border border-slate-200 rounded px-2 py-1.5 w-full bg-white focus:outline-none focus:ring-1 focus:ring-brand-500"
+            placeholder="ART-"
+            value={String(config.prefix ?? '')}
+            onChange={(e) => onChange({ ...config, prefix: e.target.value })} />
+        </div>
+        <div>
+          <label className="text-xs text-slate-500 mb-1 block">Следующий №</label>
+          <input type="number" min="1"
+            className="text-xs border border-slate-200 rounded px-2 py-1.5 w-full bg-white focus:outline-none focus:ring-1 focus:ring-brand-500"
+            value={config.next_value !== undefined ? String(config.next_value) : '1'}
+            onChange={(e) => onChange({ ...config, next_value: Number(e.target.value) })} />
+        </div>
+        <div>
+          <label className="text-xs text-slate-500 mb-1 block">Ширина числа</label>
+          <input type="number" min="1" max="10"
+            className="text-xs border border-slate-200 rounded px-2 py-1.5 w-full bg-white focus:outline-none focus:ring-1 focus:ring-brand-500"
+            placeholder="6"
+            value={config.padding !== undefined ? String(config.padding) : '6'}
+            onChange={(e) => onChange({ ...config, padding: Number(e.target.value) })} />
+        </div>
+      </div>
+      <p className="text-xs text-slate-400">
+        Пример: префикс «ART-», ширина 6 → <code className="bg-slate-100 px-1 rounded">ART-000001</code>
+      </p>
+    </div>
+  )
+}
+
+// ─── FORMULA Config Editor ───────────────────────────────────────────────────
+function FormulaConfigEditor({ config, onChange, fields }: {
+  config: Record<string, unknown>
+  onChange: (c: Record<string, unknown>) => void
+  fields: FieldDraft[]
+}) {
+  const numericFields = fields.filter((f) =>
+    ['number', 'price', 'quantity_unit'].includes(f.field_type)
+  )
+  return (
+    <div className="mt-3 space-y-2">
+      <div>
+        <label className="text-xs text-slate-500 mb-1 block">Формула (используйте slug полей)</label>
+        <input
+          className="text-xs border border-slate-200 rounded px-2 py-1.5 w-full bg-white focus:outline-none focus:ring-1 focus:ring-brand-500 font-mono"
+          placeholder="кол_во * цена"
+          value={String(config.formula ?? '')}
+          onChange={(e) => onChange({ ...config, formula: e.target.value })} />
+      </div>
+      {numericFields.length > 0 && (
+        <div>
+          <p className="text-xs text-slate-400 mb-1">Доступные числовые поля:</p>
+          <div className="flex flex-wrap gap-1">
+            {numericFields.map((f) => (
+              <code key={f._id}
+                className="text-xs bg-slate-100 px-1.5 py-0.5 rounded cursor-pointer hover:bg-brand-50 hover:text-brand-700"
+                onClick={() => onChange({ ...config, formula: `${config.formula ?? ''} ${f.slug}`.trim() })}>
+                {f.slug}
+              </code>
+            ))}
+          </div>
+        </div>
+      )}
+      <p className="text-xs text-slate-400">Поддерживаются: +, −, ×, ÷, скобки. Значение пересчитывается при каждом сохранении.</p>
+    </div>
+  )
+}
+
+// ─── STATUS Config Editor ─────────────────────────────────────────────────────
+interface StatusOption { value: string; label: string; color: string }
+function StatusOptionsEditor({ options, onChange }: {
+  options: StatusOption[]
+  onChange: (o: StatusOption[]) => void
+}) {
+  const PRESET_COLORS = ['#22c55e', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#64748b', '#06b6d4', '#f97316']
+  const add = () => {
+    const n = options.length + 1
+    onChange([...options, { value: `status_${n}`, label: `Статус ${n}`, color: PRESET_COLORS[n % PRESET_COLORS.length] }])
+  }
+  const remove = (i: number) => onChange(options.filter((_, idx) => idx !== i))
+  const update = (i: number, k: keyof StatusOption, v: string) =>
+    onChange(options.map((o, idx) => idx === i ? { ...o, [k]: v } : o))
+  return (
+    <div className="mt-3 space-y-2">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Варианты статуса</span>
+        <button type="button" onClick={add}
+          className="flex items-center gap-1 text-xs text-brand-600 hover:text-brand-700 font-medium">
+          <Plus size={12} /> Добавить
+        </button>
+      </div>
+      <div className="space-y-1.5 max-h-52 overflow-y-auto pr-1">
+        {options.map((opt, i) => (
+          <div key={i} className="flex items-center gap-2 bg-slate-50 rounded-lg px-2 py-1.5">
+            <input type="color" value={opt.color}
+              onChange={(e) => update(i, 'color', e.target.value)}
+              className="w-6 h-6 rounded cursor-pointer border-0 p-0 shrink-0" />
+            <div className="flex-1 grid grid-cols-2 gap-2">
+              <input
+                className="text-xs border border-slate-200 rounded px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-brand-500 font-mono"
+                placeholder="значение (id)"
+                value={opt.value}
+                onChange={(e) => update(i, 'value', e.target.value.replace(/\s+/g, '_').toLowerCase())} />
+              <input
+                className="text-xs border border-slate-200 rounded px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-brand-500"
+                placeholder="отображение"
+                value={opt.label}
+                onChange={(e) => update(i, 'label', e.target.value)} />
+            </div>
+            <button type="button" onClick={() => remove(i)}
+              className="text-slate-300 hover:text-red-500 transition-colors shrink-0">
+              <X size={13} />
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ─── WAREHOUSE LOCATION Config Editor ────────────────────────────────────────
+function WarehouseConfigEditor({ config, onChange }: {
+  config: Record<string, unknown>
+  onChange: (c: Record<string, unknown>) => void
+}) {
+  return (
+    <div className="mt-3 space-y-2">
+      <div>
+        <label className="text-xs text-slate-500 mb-1 block">Формат / подсказка</label>
+        <input className="text-xs border border-slate-200 rounded px-2 py-1.5 w-full bg-white focus:outline-none focus:ring-1 focus:ring-brand-500 font-mono"
+          placeholder="А-12-3"
+          value={String(config.placeholder ?? 'А-12-3')}
+          onChange={(e) => onChange({ ...config, placeholder: e.target.value })} />
+        <p className="text-xs text-slate-400 mt-0.5">Например: Склад-Стеллаж-Полка-Ячейка → А-12-3-5</p>
+      </div>
+    </div>
+  )
+}
+
+const FIELDS_WITH_CONFIG = new Set([
+  'select', 'number', 'expiry_date', 'quantity_unit', 'relation',
+  'price', 'autoincrement', 'formula', 'status', 'warehouse_location',
+])
 
 // ─── Sortable Field Row ─────────────────────────────────────────────────────
-function SortableField({ field, updateField, removeField, toggleExpand, currentEntityId }: {
+function SortableField({ field, updateField, removeField, toggleExpand, currentEntityId, allFields }: {
   field: FieldDraft
   updateField: (id: string, p: Partial<FieldDraft>) => void
   removeField: (id: string) => void
   toggleExpand: (id: string) => void
   currentEntityId?: string
+  allFields: FieldDraft[]
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: field._id })
@@ -347,6 +547,26 @@ function SortableField({ field, updateField, removeField, toggleExpand, currentE
             <RelationConfigEditor config={numConfig} currentEntityId={currentEntityId}
               onChange={(c) => updateField(field._id, { config: c })} />
           )}
+          {field.field_type === 'price' && (
+            <PriceConfigEditor config={numConfig}
+              onChange={(c) => updateField(field._id, { config: c })} />
+          )}
+          {field.field_type === 'autoincrement' && (
+            <AutoincrementConfigEditor config={numConfig}
+              onChange={(c) => updateField(field._id, { config: c })} />
+          )}
+          {field.field_type === 'formula' && (
+            <FormulaConfigEditor config={numConfig} fields={allFields.filter((f) => f._id !== field._id)}
+              onChange={(c) => updateField(field._id, { config: c })} />
+          )}
+          {field.field_type === 'status' && (
+            <StatusOptionsEditor options={(field.config as any)?.options ?? []}
+              onChange={(opts) => updateField(field._id, { config: { ...field.config, options: opts } })} />
+          )}
+          {field.field_type === 'warehouse_location' && (
+            <WarehouseConfigEditor config={numConfig}
+              onChange={(c) => updateField(field._id, { config: c })} />
+          )}
         </div>
       )}
     </div>
@@ -394,7 +614,7 @@ export default function EntityBuilderPage() {
           is_searchable: f.is_searchable,
           position: f.position,
           config: f.config ?? undefined,
-          _expanded: f.field_type === 'select' || f.field_type === 'number',
+          _expanded: ['select', 'number', 'price', 'autoincrement', 'formula', 'status', 'warehouse_location'].includes(f.field_type),
         }))
     )
   }, [existing])
@@ -570,7 +790,8 @@ export default function EntityBuilderPage() {
                   {fields.map((field) => (
                     <SortableField key={field._id} field={field}
                       updateField={updateField} removeField={removeField}
-                      toggleExpand={toggleExpand} currentEntityId={id} />
+                      toggleExpand={toggleExpand} currentEntityId={id}
+                      allFields={fields} />
                   ))}
                 </SortableContext>
               </DndContext>

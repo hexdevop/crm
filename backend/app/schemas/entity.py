@@ -29,6 +29,8 @@ class EntityFieldCreate(BaseModel):
         allowed = {
             "text", "number", "date", "boolean", "select", "email", "phone",
             "quantity_unit", "expiry_date", "barcode", "relation",
+            "image", "price", "autoincrement", "formula",
+            "warehouse_location", "file", "status",
         }
         if v not in allowed:
             raise ValueError(f"field_type must be one of: {', '.join(sorted(allowed))}")

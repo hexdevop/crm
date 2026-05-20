@@ -61,6 +61,58 @@ function formatValue(field: EntityField, value: unknown): React.ReactNode {
       return <a href={`mailto:${value}`} className="text-brand-600 hover:underline" onClick={(e) => e.stopPropagation()}>{String(value)}</a>
     case 'phone':
       return <a href={`tel:${value}`} className="text-brand-600 hover:underline" onClick={(e) => e.stopPropagation()}>{String(value)}</a>
+    case 'price': {
+      const symbol = (field.config as any)?.symbol ?? ''
+      const decimals = (field.config as any)?.decimals ?? 2
+      const num = parseFloat(String(value))
+      if (isNaN(num)) return <span className="text-slate-700">{String(value)}</span>
+      const formatted = num.toLocaleString('ru-RU', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })
+      return <span className="font-medium text-slate-700">{formatted} <span className="text-slate-400 text-xs">{symbol}</span></span>
+    }
+    case 'autoincrement':
+      return <code className="text-xs font-mono bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-md">{String(value)}</code>
+    case 'formula': {
+      const num = parseFloat(String(value))
+      return isNaN(num)
+        ? <span className="text-slate-700">{String(value)}</span>
+        : <span className="font-semibold text-slate-800">{num.toLocaleString('ru-RU', { maximumFractionDigits: 4 })}</span>
+    }
+    case 'warehouse_location':
+      return (
+        <span className="inline-flex items-center gap-1 text-xs font-mono bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md">
+          📍 {String(value)}
+        </span>
+      )
+    case 'status': {
+      const opts = (field.config as any)?.options ?? []
+      const opt = opts.find((o: any) => o.value === value)
+      if (!opt) return <span className="text-xs text-slate-400">{String(value)}</span>
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border"
+          style={{ backgroundColor: opt.color + '22', borderColor: opt.color, color: opt.color }}>
+          ● {opt.label}
+        </span>
+      )
+    }
+    case 'image': {
+      const url = String(value)
+      return (
+        <a href={url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>
+          <img src={url} alt="" className="h-8 w-8 object-cover rounded-lg border border-slate-200" />
+        </a>
+      )
+    }
+    case 'file': {
+      const url = String(value)
+      const name = decodeURIComponent(url.split('/').pop() ?? 'файл')
+      return (
+        <a href={url} target="_blank" rel="noreferrer"
+          className="flex items-center gap-1 text-xs text-brand-600 hover:underline"
+          onClick={(e) => e.stopPropagation()}>
+          📎 {name.length > 20 ? name.slice(0, 20) + '…' : name}
+        </a>
+      )
+    }
     default:
       return <span className="text-slate-700 truncate">{String(value)}</span>
   }

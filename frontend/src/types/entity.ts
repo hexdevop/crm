@@ -1,9 +1,16 @@
 export type FieldType =
   | 'text' | 'number' | 'date' | 'boolean' | 'select' | 'email' | 'phone'
-  | 'quantity_unit'  // число + единица измерения
-  | 'expiry_date'    // срок годности с уведомлениями
-  | 'barcode'        // штрихкод / QR-код
-  | 'relation'       // связь с другой сущностью
+  | 'quantity_unit'       // число + единица измерения
+  | 'expiry_date'         // срок годности с уведомлениями
+  | 'barcode'             // штрихкод / QR-код
+  | 'relation'            // связь с другой сущностью
+  | 'image'               // фото / изображение
+  | 'price'               // цена с валютой
+  | 'autoincrement'       // автоинкремент / артикул
+  | 'formula'             // вычисляемое поле
+  | 'warehouse_location'  // адрес ячейки на складе
+  | 'file'                // файл / документ
+  | 'status'              // статус с цветом
 
 export interface EntityField {
   id: string

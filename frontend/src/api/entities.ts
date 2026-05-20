@@ -51,4 +51,16 @@ export const entitiesApi = {
 
   deleteRecord: (entityId: string, recordId: string) =>
     apiClient.delete(`/entities/${entityId}/records/${recordId}`).then((r) => r.data),
+
+  uploadImage: (file: File) => {
+    const form = new FormData()
+    form.append('file', file)
+    return apiClient.post<{ url: string; original_name: string; size: number }>('/uploads/image', form).then((r) => r.data)
+  },
+
+  uploadFile: (file: File) => {
+    const form = new FormData()
+    form.append('file', file)
+    return apiClient.post<{ url: string; original_name: string; size: number }>('/uploads/file', form).then((r) => r.data)
+  },
 }

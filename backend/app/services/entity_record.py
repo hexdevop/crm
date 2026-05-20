@@ -60,7 +60,9 @@ class EntityRecordService:
         if not entity:
             raise NotFoundException("Entity")
 
-        validated_data = self._validate_record_data(data.data, entity.fields)
+        enriched = await self._assign_autoincrement_values(data.data, entity.fields)
+        validated_data = self._validate_record_data(enriched, entity.fields)
+        validated_data = self._compute_formula_fields(validated_data, entity.fields)
 
         record = await self.repo.create(
             entity_id=entity_id,
@@ -93,6 +95,7 @@ class EntityRecordService:
 
         record = await self.get_record(entity_id, record_id)
         validated_data = self._validate_record_data(data.data, entity.fields, partial=True)
+        validated_data = self._compute_formula_fields({**record.data, **validated_data}, entity.fields)
 
         # Merge with existing data
         merged = {**record.data, **validated_data}
@@ -113,6 +116,76 @@ class EntityRecordService:
         await self.repo.delete(record)
         await self.db.commit()
 
+    async def _assign_autoincrement_values(
+        self,
+        data: dict[str, Any],
+        fields: list[EntityField],
+    ) -> dict[str, Any]:
+        from sqlalchemy import update as sa_update
+        from app.models.entity import EntityField as EF
+
+        result = dict(data)
+        for field in fields:
+            if field.field_type != FieldType.autoincrement:
+                continue
+            config = field.config or {}
+            prefix = str(config.get("prefix", ""))
+            next_val = int(config.get("next_value", 1))
+            padding = int(config.get("padding", 6))
+            result[field.slug] = f"{prefix}{str(next_val).zfill(padding)}"
+            new_config = {**config, "next_value": next_val + 1}
+            await self.db.execute(
+                sa_update(EF).where(EF.id == field.id).values(config=new_config)
+            )
+        return result
+
+    def _compute_formula_fields(
+        self,
+        data: dict[str, Any],
+        fields: list[EntityField],
+    ) -> dict[str, Any]:
+        result = dict(data)
+        for field in fields:
+            if field.field_type != FieldType.formula:
+                continue
+            config = field.config or {}
+            expr = str(config.get("formula", "")).strip()
+            if expr:
+                try:
+                    result[field.slug] = self._eval_formula(expr, result)
+                except Exception:
+                    result[field.slug] = None
+        return result
+
+    def _eval_formula(self, expr: str, data: dict[str, Any]) -> float | None:
+        import re
+        # Build numeric context from data
+        ctx: dict[str, float] = {}
+        for slug, value in data.items():
+            if isinstance(value, (int, float)):
+                ctx[slug] = float(value)
+            elif isinstance(value, dict) and "value" in value:
+                try:
+                    ctx[slug] = float(value["value"])
+                except (TypeError, ValueError):
+                    ctx[slug] = 0.0
+            elif isinstance(value, str):
+                try:
+                    ctx[slug] = float(value)
+                except (TypeError, ValueError):
+                    ctx[slug] = 0.0
+            else:
+                ctx[slug] = 0.0
+
+        # Allow only safe characters
+        if re.search(r"[^0-9a-zа-яё_\s\+\-\*\/\.\(\)]", expr, re.IGNORECASE):
+            return None
+        try:
+            val = eval(expr, {"__builtins__": {}}, ctx)  # noqa: S307
+            return round(float(val), 10)
+        except Exception:
+            return None
+
     def _validate_record_data(
         self,
         data: dict[str, Any],
@@ -123,6 +196,12 @@ class EntityRecordService:
         validated: dict[str, Any] = {}
 
         for field in fields:
+            # Server-generated fields: pass through as-is
+            if field.field_type in (FieldType.autoincrement, FieldType.formula):
+                if field.slug in data:
+                    validated[field.slug] = data[field.slug]
+                continue
+
             value = data.get(field.slug)
 
             if field.is_required and not partial and value is None:
@@ -197,6 +276,29 @@ class EntityRecordService:
                 raise ValidationException(
                     f"Field '{field.name}' must be one of: {', '.join(options)}"
                 )
+            return value
+
+        if ft == FieldType.status:
+            config = field.config or {}
+            options = [opt["value"] for opt in config.get("options", [])]
+            if options and value not in options:
+                raise ValidationException(
+                    f"Field '{field.name}' must be one of: {', '.join(options)}"
+                )
+            return str(value)
+
+        if ft == FieldType.price:
+            try:
+                return round(float(value), 2)
+            except (TypeError, ValueError):
+                raise ValidationException(f"Field '{field.name}' must be a number")
+
+        if ft == FieldType.warehouse_location:
+            return str(value)
+
+        if ft in (FieldType.image, FieldType.file):
+            if not isinstance(value, str):
+                raise ValidationException(f"Field '{field.name}' must be a URL string")
             return value
 
         return value
