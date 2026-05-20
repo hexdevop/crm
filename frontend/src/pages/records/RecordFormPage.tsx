@@ -169,7 +169,7 @@ export default function RecordFormPage() {
 
       <Card>
         <CardBody>
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={(e) => e.preventDefault()} className="space-y-5">
             {entity.fields.map((field) => (
               <FieldInput
                 key={field.id}

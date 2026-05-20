@@ -1,4 +1,4 @@
-import { Menu, Bell } from 'lucide-react'
+import { Menu } from 'lucide-react'
 import { useUIStore } from '@/store/ui.store'
 import { useAuthStore } from '@/store/auth.store'
 import Avatar from '@/components/ui/Avatar'
@@ -23,9 +23,6 @@ export default function Topbar() {
 
       {/* Right side */}
       <div className="flex items-center gap-3">
-        <button className="relative p-2 rounded-lg text-slate-500 hover:bg-slate-100 transition-colors">
-          <Bell size={18} />
-        </button>
         <Avatar name={user?.full_name ?? 'User'} size="sm" />
       </div>
     </header>

@@ -74,11 +74,12 @@ async def get_own_profile(
 async def get_user(
     user_id: uuid.UUID,
     db: Annotated[AsyncSession, Depends(get_db)],
+    redis=Depends(get_redis),
     current_user=Depends(get_current_user),
 ):
     # Own profile or manage_users
     if current_user.id != user_id:
-        await require_permission("manage_users")(current_user)
+        await require_permission("manage_users")(current_user, redis)
     service = UserService(db, current_user.company_id)
     user = await service.get_user(user_id)
     return UserResponse.from_orm_with_roles(user)

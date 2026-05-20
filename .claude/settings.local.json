@@ -12,7 +12,10 @@
       "Bash(powershell -Command \"'' | Out-File -FilePath 'E:\\\\crm\\\\frontend\\\\src\\\\pages\\\\records\\\\RecordsPage.tsx' -Encoding utf8 -NoNewline; 'done'\")",
       "Bash(ls E:/crm/*.md)",
       "Bash(rtk ls *)",
-      "Bash(rtk git *)"
+      "Bash(rtk git *)",
+      "Bash(rtk grep *)",
+      "Bash(xargs grep *)",
+      "Bash(rtk find *)"
     ]
   }
 }
