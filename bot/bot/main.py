@@ -1,7 +1,9 @@
 import asyncio
 import logging
+import aiohttp
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
+from aiogram.client.session.aiohttp import AiohttpSession
 from aiogram.enums import ParseMode
 
 from bot.config import settings
@@ -23,8 +25,21 @@ async def main():
         await asyncio.sleep(3600)
         return
 
+    proxy = settings.TELEGRAM_PROXY
+    session = AiohttpSession()
+    if proxy:
+        if proxy.startswith(("socks4://", "socks5://")):
+            from aiohttp_socks import ProxyConnector
+            connector = ProxyConnector.from_url(proxy)
+            # Inject aiohttp session with SOCKS connector — must be done inside async context
+            session._session = aiohttp.ClientSession(connector=connector)
+        else:
+            session = AiohttpSession(proxy=proxy)
+        logger.info("Using proxy: %s", proxy)
+
     bot = Bot(
         token=settings.BOT_TOKEN,
+        session=session,
         default=DefaultBotProperties(parse_mode=ParseMode.HTML),
     )
     dp = Dispatcher()

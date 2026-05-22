@@ -13,6 +13,9 @@ class BotSettings(BaseSettings):
     INTERNAL_BOT_TOKEN: str = "crm-internal-bot-token-change-in-production"
     WEBHOOK_URL: str = ""
     WEBHOOK_PATH: str = "/webhook"
+    # Optional proxy for Telegram API (HTTP or SOCKS5)
+    # Examples: http://user:pass@host:1080  |  socks5://user:pass@host:1080
+    TELEGRAM_PROXY: str = ""
 
 
 settings = BotSettings()
