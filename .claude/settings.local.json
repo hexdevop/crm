@@ -27,7 +27,11 @@
       "Bash(cmd.exe /c \"cd E:\\\\crm\\\\frontend && npx tsc --noEmit 2>&1\")",
       "Bash(cmd.exe /c \"cd /d E:\\\\crm\\\\frontend && npx tsc --noEmit 2>&1\")",
       "Bash(cmd.exe /c \"cd /d E:\\\\crm\\\\frontend && npx tsc --noEmit\")",
-      "Bash(cmd.exe *)"
+      "Bash(cmd.exe *)",
+      "Bash(Get-ChildItem -Path \"E:\\\\crm\\\\frontend\\\\src\\\\pages\" -Recurse -File)",
+      "Bash(Select-Object FullName)",
+      "Bash(rtk wc *)",
+      "Bash(grep -v \"^--$\")"
     ]
   }
 }

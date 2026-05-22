@@ -4,8 +4,11 @@ import { rolesApi } from '@/api/roles'
 import { getApiError } from '@/api/client'
 import type { RoleCreate, RoleUpdate } from '@/types/role'
 
-export function useRoles() {
-  return useQuery({ queryKey: ['roles'], queryFn: rolesApi.list })
+export function useRoles(params?: { company_id?: string }) {
+  return useQuery({
+    queryKey: ['roles', params],
+    queryFn: () => rolesApi.list(params),
+  })
 }
 
 export function useRole(id: string) {

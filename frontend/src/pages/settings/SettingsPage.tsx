@@ -1,19 +1,19 @@
 import { useState } from 'react'
-import { User, Bell, Shield, Key, Settings2 } from 'lucide-react'
-import { useAuthStore, useHasPermission, useIsSuperAdmin } from '@/store/auth.store'
+import { User, Bell, Shield, Key, Building2 } from 'lucide-react'
+import { useAuthStore } from '@/store/auth.store'
 import Card, { CardHeader, CardBody } from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import Avatar from '@/components/ui/Avatar'
-import Spinner from '@/components/ui/Spinner'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { usersApi } from '@/api/users'
+import { companiesApi } from '@/api/companies'
 import { getApiError } from '@/api/client'
 import toast from 'react-hot-toast'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { useTelegramSettings, useUpdateTelegramSettings, useGetTelegramConnectToken } from '@/hooks/useTelegram'
+import { useGetTelegramConnectToken } from '@/hooks/useTelegram'
 
 // ─── Schemas ────────────────────────────────────────────────────────────────
 
@@ -36,134 +36,21 @@ const passwordSchema = z.object({
 type ProfileForm = z.infer<typeof profileSchema>
 type PasswordForm = z.infer<typeof passwordSchema>
 
+const companySchema = z.object({
+  name: z.string().min(2, 'Минимум 2 символа'),
+  description: z.string().optional(),
+})
+
+type CompanyForm = z.infer<typeof companySchema>
+
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-const BASE_TABS = [
-  { id: 'profile', label: 'Профиль', icon: User },
-  { id: 'telegram', label: 'Telegram', icon: Bell },
+const TABS = [
+  { id: 'profile',  label: 'Профиль',      icon: User },
+  { id: 'company',  label: 'Компания',     icon: Building2 },
+  { id: 'telegram', label: 'Telegram',     icon: Bell },
   { id: 'security', label: 'Безопасность', icon: Shield },
 ]
-const ADMIN_TAB = { id: 'telegram_admin', label: 'Telegram (Адм.)', icon: Settings2 }
-
-const EVENT_LABELS: Record<string, string> = {
-  record_created: 'Новая запись создана',
-  record_updated: 'Запись обновлена',
-  user_assigned: 'Назначение пользователя',
-  access_expired: 'Истечение срока доступа',
-}
-
-// ─── Sub-components ──────────────────────────────────────────────────────────
-
-function TelegramAdminTab() {
-  const { data: tgSettings, isLoading: tgLoading, isError: tgError, refetch } = useTelegramSettings()
-  const updateSettings = useUpdateTelegramSettings()
-
-  const [tgEnabled, setTgEnabled] = useState<boolean | undefined>(undefined)
-  const [tgEvents, setTgEvents] = useState<Record<string, boolean> | undefined>(undefined)
-
-  // Derived state: use tgSettings as source of truth when local state is undefined
-  const currentEnabled = tgEnabled ?? tgSettings?.is_enabled ?? false
-  const currentEvents = tgEvents ?? tgSettings?.notification_events ?? {}
-
-  const toggleEvent = (key: string) => {
-    setTgEvents({ ...currentEvents, [key]: !currentEvents[key] })
-  }
-
-  const saveTgSettings = () => {
-    updateSettings.mutate({ is_enabled: currentEnabled, notification_events: currentEvents })
-  }
-
-  if (tgLoading) {
-    return (
-      <Card>
-        <CardBody>
-          <div className="flex items-center justify-center py-10">
-            <Spinner />
-          </div>
-        </CardBody>
-      </Card>
-    )
-  }
-
-  if (tgError) {
-    return (
-      <Card>
-        <CardBody>
-          <div className="flex flex-col items-center gap-3 py-8 text-center">
-            <p className="text-sm text-red-600 font-medium">Не удалось загрузить настройки</p>
-            <p className="text-xs text-slate-500">Проверьте соединение и попробуйте снова</p>
-            <Button variant="secondary" onClick={() => refetch()}>
-              Повторить
-            </Button>
-          </div>
-        </CardBody>
-      </Card>
-    )
-  }
-
-  return (
-    <Card>
-      <CardHeader>
-        <p className="text-sm font-semibold text-slate-900">Telegram — уведомления системы</p>
-      </CardHeader>
-      <CardBody>
-        <div className="space-y-6">
-          {/* Enable toggle */}
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-slate-900">Включить уведомления</p>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Бот будет отправлять уведомления в настроенные чаты
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setTgEnabled(!currentEnabled)}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                currentEnabled ? 'bg-brand-600' : 'bg-slate-200'
-              }`}
-              aria-checked={currentEnabled}
-              role="switch"
-            >
-              <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow ${
-                  currentEnabled ? 'translate-x-6' : 'translate-x-1'
-                }`}
-              />
-            </button>
-          </div>
-
-          {/* Notification events */}
-          <div>
-            <p className="text-sm font-medium text-slate-900 mb-3">События для уведомлений</p>
-            <div className="space-y-2.5">
-              {Object.entries(EVENT_LABELS).map(([key, label]) => (
-                <label key={key} className="flex items-center gap-3 cursor-pointer group">
-                  <input
-                    type="checkbox"
-                    checked={!!currentEvents[key]}
-                    onChange={() => toggleEvent(key)}
-                    className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500 cursor-pointer"
-                  />
-                  <span className="text-sm text-slate-700 group-hover:text-slate-900 transition-colors">
-                    {label}
-                  </span>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          {/* Save */}
-          <div className="flex justify-end pt-2 border-t border-slate-100">
-            <Button onClick={saveTgSettings} loading={updateSettings.isPending}>
-              Сохранить
-            </Button>
-          </div>
-        </div>
-      </CardBody>
-    </Card>
-  )
-}
 
 // ─── Main page ───────────────────────────────────────────────────────────────
 
@@ -171,12 +58,6 @@ export default function SettingsPage() {
   const [tab, setTab] = useState('profile')
   const user = useAuthStore((s) => s.user)
   const setUser = useAuthStore((s) => s.setUser)
-  const isAdmin = useHasPermission('manage_users')
-  const isSuperAdmin = useIsSuperAdmin()
-
-  // Telegram admin settings are company-scoped — superadmin has no company, so hide that tab
-  const showTelegramAdmin = isAdmin && !isSuperAdmin
-  const tabs = showTelegramAdmin ? [...BASE_TABS, ADMIN_TAB] : BASE_TABS
 
   const profileForm = useForm<ProfileForm>({
     resolver: zodResolver(profileSchema),
@@ -207,13 +88,33 @@ export default function SettingsPage() {
 
   const connectToken = useGetTelegramConnectToken()
 
+  const { data: company, refetch: refetchCompany } = useQuery({
+    queryKey: ['company', 'me'],
+    queryFn: companiesApi.getMe,
+    enabled: !!user?.company_id,
+  })
+
+  const companyForm = useForm<CompanyForm>({
+    resolver: zodResolver(companySchema),
+    values: { name: company?.name ?? '', description: company?.description ?? '' },
+  })
+
+  const updateCompany = useMutation({
+    mutationFn: (d: CompanyForm) => companiesApi.update(user!.company_id!, d),
+    onSuccess: () => {
+      toast.success('Данные компании обновлены')
+      refetchCompany()
+    },
+    onError: (e) => toast.error(getApiError(e)),
+  })
+
   return (
     <div className="max-w-3xl space-y-5">
       <h1 className="text-xl font-semibold text-slate-900">Настройки</h1>
 
       {/* Tab bar */}
       <div className="flex border-b border-slate-200 gap-1">
-        {tabs.map((t) => (
+        {TABS.filter((t) => t.id !== 'company' || !!user?.company_id).map((t) => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
@@ -260,6 +161,49 @@ export default function SettingsPage() {
               </div>
               <div className="flex justify-end">
                 <Button type="submit" loading={updateProfile.isPending}>
+                  Сохранить
+                </Button>
+              </div>
+            </form>
+          </CardBody>
+        </Card>
+      )}
+
+      {/* ── Company ── */}
+      {tab === 'company' && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center shrink-0">
+                <Building2 size={18} className="text-indigo-600" />
+              </div>
+              <div>
+                <p className="font-semibold text-slate-900">{company?.name ?? '—'}</p>
+                <p className="text-xs text-slate-500">{company?.slug}</p>
+              </div>
+            </div>
+          </CardHeader>
+          <CardBody>
+            <form
+              onSubmit={companyForm.handleSubmit((d) => updateCompany.mutate(d))}
+              className="space-y-4"
+            >
+              <Input
+                label="Название компании"
+                error={companyForm.formState.errors.name?.message}
+                {...companyForm.register('name')}
+              />
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Описание</label>
+                <textarea
+                  rows={3}
+                  className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent resize-none"
+                  placeholder="Краткое описание компании..."
+                  {...companyForm.register('description')}
+                />
+              </div>
+              <div className="flex justify-end">
+                <Button type="submit" loading={updateCompany.isPending}>
                   Сохранить
                 </Button>
               </div>
@@ -342,8 +286,6 @@ export default function SettingsPage() {
         </Card>
       )}
 
-      {/* ── Telegram Admin (company admins only, not superadmin) ── */}
-      {tab === 'telegram_admin' && showTelegramAdmin && <TelegramAdminTab />}
     </div>
   )
 }

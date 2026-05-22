@@ -27,7 +27,7 @@ export function useLogin() {
       const user = await authApi.me()
       setUser(user)
       queryClient.setQueryData(['me'], user)
-      navigate('/dashboard')
+      navigate(user.is_superadmin ? '/admin/overview' : '/dashboard')
     },
     onError: (err) => {
       toast.error(getApiError(err))
@@ -47,7 +47,7 @@ export function useRegister() {
       const user = await authApi.me()
       setUser(user)
       queryClient.setQueryData(['me'], user)
-      navigate('/dashboard')
+      navigate(user.is_superadmin ? '/admin/overview' : '/dashboard')
       toast.success('Добро пожаловать! CRM готова к работе.')
     },
     onError: (err) => {

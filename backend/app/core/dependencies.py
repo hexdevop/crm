@@ -56,7 +56,7 @@ async def get_current_user(
     if not user.is_active:
         raise AccountDisabledException()
 
-    # Check access expiration
+    # Check per-user access expiration
     exp_result = await db.execute(
         select(AccessExpiration).where(AccessExpiration.user_id == user.id)
     )
@@ -66,6 +66,16 @@ async def get_current_user(
             user.is_active = False
             await db.commit()
         raise AccessExpiredException()
+
+    # Check company-level access expiration (skip for superadmin)
+    if not user.is_superadmin and user.company_id:
+        from app.models.company import Company
+        comp_result = await db.execute(
+            select(Company).where(Company.id == user.company_id)
+        )
+        company = comp_result.scalar_one_or_none()
+        if company and company.access_expires_at and company.access_expires_at < datetime.now(timezone.utc):
+            raise AccessExpiredException()
 
     return user
 

@@ -11,6 +11,7 @@ export interface LoginRequest {
 export interface RegisterRequest {
   company_name: string
   company_slug: string
+  company_description?: string
   first_name: string
   last_name: string
   email: string

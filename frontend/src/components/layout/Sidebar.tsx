@@ -8,6 +8,7 @@ import {
   ChevronLeft,
   LogOut,
   Building2,
+  ShieldCheck,
   Clock,
   LucideIcon,
 } from 'lucide-react'
@@ -25,15 +26,19 @@ interface NavItem {
   permission?: string
   /** Only render for superadmins */
   superadminOnly?: boolean
+  /** Hide for superadmins (company-scoped pages) */
+  hideForSuperadmin?: boolean
 }
 
 const navItems: NavItem[] = [
-  { to: '/dashboard', label: 'Дашборд', icon: LayoutDashboard },
-  { to: '/users', label: 'Пользователи', icon: Users, permission: 'manage_users' },
-  { to: '/roles', label: 'Роли', icon: Shield, permission: 'manage_roles' },
-  { to: '/access-expiration', label: 'Временный доступ', icon: Clock, superadminOnly: true },
-  { to: '/entities', label: 'Сущности', icon: Database },
-  { to: '/settings', label: 'Настройки', icon: Settings },
+  { to: '/dashboard',       label: 'Дашборд',          icon: LayoutDashboard,  hideForSuperadmin: true },
+  { to: '/users',           label: 'Пользователи',      icon: Users,            permission: 'manage_users', hideForSuperadmin: true },
+  { to: '/roles',           label: 'Роли',              icon: Shield,           permission: 'manage_roles', hideForSuperadmin: true },
+  { to: '/entities',        label: 'Сущности',          icon: Database,         hideForSuperadmin: true },
+  { to: '/settings',        label: 'Настройки',         icon: Settings,         hideForSuperadmin: true },
+  { to: '/admin/overview',  label: 'Обзор',             icon: ShieldCheck,      superadminOnly: true },
+  { to: '/admin/companies', label: 'Компании',          icon: Building2,        superadminOnly: true },
+  { to: '/admin/access',    label: 'Временный доступ',  icon: Clock,            superadminOnly: true },
 ]
 
 function NavItem({ item }: { item: NavItem }) {
@@ -41,11 +46,13 @@ function NavItem({ item }: { item: NavItem }) {
   const hasPerm = !item.permission || useHasPermission(item.permission)
 
   if (item.superadminOnly && !isSuperAdmin) return null
+  if (item.hideForSuperadmin && isSuperAdmin) return null
   if (!hasPerm) return null
 
   return (
     <NavLink
       to={item.to}
+      end={false}
       className={({ isActive }) =>
         cn(
           'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150',

@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { useState } from 'react'
 import {
   Plus, Search, Trash2, Edit2, ChevronLeft, ChevronRight,
@@ -121,6 +121,8 @@ function formatValue(field: EntityField, value: unknown): React.ReactNode {
 export default function RecordsPage() {
   const { entityId } = useParams<{ entityId: string }>()
   const navigate = useNavigate()
+  const location = useLocation()
+  const backUrl: string = (location.state as any)?.backUrl ?? '/entities'
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
   const [deleteTarget, setDeleteTarget] = useState<EntityRecord | null>(null)
@@ -145,12 +147,12 @@ export default function RecordsPage() {
     <div className="space-y-5">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-sm">
-        <button onClick={() => navigate('/entities')}
+        <button onClick={() => navigate(backUrl)}
           className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 mr-1">
           <ArrowLeft size={16} />
         </button>
-        <button onClick={() => navigate('/entities')} className="text-slate-500 hover:text-slate-700">
-          Сущности
+        <button onClick={() => navigate(backUrl)} className="text-slate-500 hover:text-slate-700">
+          Назад
         </button>
         <span className="text-slate-300">/</span>
         <span className="font-medium text-slate-900">{entity.name}</span>
@@ -160,7 +162,7 @@ export default function RecordsPage() {
         title={`${entity.icon ?? '📋'} ${entity.name}`}
         description={entity.description ?? `${entity.fields.length} полей · ${records?.total ?? 0} записей`}
         action={
-          <Button icon={<Plus size={16} />} onClick={() => navigate(`/entities/${entityId}/records/new`)}>
+          <Button icon={<Plus size={16} />} onClick={() => navigate(`${location.pathname}/new`, { state: { backUrl: location.pathname } })}>
             Добавить запись
           </Button>
         }
@@ -210,7 +212,7 @@ export default function RecordsPage() {
             description={search ? 'По вашему запросу ничего не найдено' : 'Добавьте первую запись'}
             action={!search ? {
               label: 'Добавить запись',
-              onClick: () => navigate(`/entities/${entityId}/records/new`),
+              onClick: () => navigate(`${location.pathname}/new`, { state: { backUrl: location.pathname } }),
             } : undefined}
           />
         ) : (
@@ -237,7 +239,7 @@ export default function RecordsPage() {
                   {records.items.map((record, idx) => (
                     <tr key={record.id}
                       className="hover:bg-slate-50 transition-colors group cursor-pointer"
-                      onClick={() => navigate(`/entities/${entityId}/records/${record.id}/edit`)}>
+                      onClick={() => navigate(`${location.pathname}/${record.id}/edit`, { state: { backUrl: location.pathname } })}>
                       <td className="px-4 py-3.5 text-xs text-slate-400 font-mono">
                         {(page - 1) * 25 + idx + 1}
                       </td>
@@ -253,7 +255,7 @@ export default function RecordsPage() {
                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button
                             onClick={() => {
-                              navigate(`/entities/${entityId}/records/${record.id}/edit`)
+                              navigate(`${location.pathname}/${record.id}/edit`, { state: { backUrl: location.pathname } })
                               setTimeout(() => {
                                 const btn = document.querySelector<HTMLButtonElement>('[data-tab="movements"]')
                                 btn?.click()
@@ -264,7 +266,7 @@ export default function RecordsPage() {
                             <Package size={13} />
                           </button>
                           <button
-                            onClick={() => navigate(`/entities/${entityId}/records/${record.id}/edit`)}
+                            onClick={() => navigate(`${location.pathname}/${record.id}/edit`, { state: { backUrl: location.pathname } })}
                             className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-brand-600 transition-colors"
                             title="Редактировать">
                             <Edit2 size={13} />

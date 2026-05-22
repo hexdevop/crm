@@ -22,6 +22,8 @@ class CompanyUpdate(BaseModel):
     name: str | None = None
     description: str | None = None
     logo_url: str | None = None
+    is_active: bool | None = None
+    access_expires_at: datetime | None = None
 
 
 class CompanyResponse(BaseModel):
@@ -33,5 +35,6 @@ class CompanyResponse(BaseModel):
     description: str | None
     logo_url: str | None
     is_active: bool
+    access_expires_at: datetime | None = None
     created_at: datetime
     updated_at: datetime

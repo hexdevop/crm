@@ -1,7 +1,7 @@
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import require_permission
@@ -23,8 +23,10 @@ router = APIRouter(prefix="/roles", tags=["Roles"])
 async def list_roles(
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user=Depends(require_permission("read")),
+    company_id: uuid.UUID | None = Query(default=None),
 ):
-    service = RoleService(db, current_user.company_id)
+    effective_company_id = company_id if current_user.is_superadmin and company_id else current_user.company_id
+    service = RoleService(db, effective_company_id)
     roles = await service.list_roles()
     return [RoleResponse.from_orm(r) for r in roles]
 

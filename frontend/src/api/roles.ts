@@ -2,8 +2,8 @@ import { apiClient } from './client'
 import type { Role, Permission, RoleCreate, RoleUpdate } from '@/types/role'
 
 export const rolesApi = {
-  list: () =>
-    apiClient.get<Role[]>('/roles').then((r) => r.data),
+  list: (params?: { company_id?: string }) =>
+    apiClient.get<Role[]>('/roles', { params }).then((r) => r.data),
 
   get: (id: string) =>
     apiClient.get<Role>(`/roles/${id}`).then((r) => r.data),

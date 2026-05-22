@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useEffect } from 'react'
-import { useAuthStore } from '@/store/auth.store'
+import { useAuthStore, useIsSuperAdmin } from '@/store/auth.store'
 import { authApi } from '@/api/auth'
 
 // Layouts
@@ -22,11 +22,21 @@ import EntityBuilderPage from '@/pages/entities/EntityBuilderPage'
 import RecordsPage from '@/pages/records/RecordsPage'
 import RecordFormPage from '@/pages/records/RecordFormPage'
 import SettingsPage from '@/pages/settings/SettingsPage'
-import AccessExpirationPage from '@/pages/access/AccessExpirationPage'
+import {
+  AdminOverviewPage,
+  AdminCompaniesPage,
+  AdminCompanyDetailPage,
+  AdminAccessPage,
+} from '@/pages/admin/SuperAdminPage'
 import NotFoundPage from '@/pages/errors/NotFoundPage'
 
 // Guards
 import ProtectedRoute from '@/router/ProtectedRoute'
+
+function RootRedirect() {
+  const isSuperAdmin = useIsSuperAdmin()
+  return <Navigate to={isSuperAdmin ? '/admin/overview' : '/dashboard'} replace />
+}
 
 function App() {
   const { isAuthenticated, setUser } = useAuthStore()
@@ -50,7 +60,7 @@ function App() {
         {/* Protected app routes */}
         <Route element={<ProtectedRoute />}>
           <Route element={<AppLayout />}>
-            <Route index element={<Navigate to="/dashboard" replace />} />
+            <Route index element={<RootRedirect />} />
             <Route path="/dashboard" element={<DashboardPage />} />
 
             <Route path="/users" element={<UsersPage />} />
@@ -66,7 +76,15 @@ function App() {
             <Route path="/entities/:entityId/records/new" element={<RecordFormPage />} />
             <Route path="/entities/:entityId/records/:recordId/edit" element={<RecordFormPage />} />
 
-            <Route path="/access-expiration" element={<AccessExpirationPage />} />
+            <Route path="/admin" element={<Navigate to="/admin/overview" replace />} />
+            <Route path="/admin/overview" element={<AdminOverviewPage />} />
+            <Route path="/admin/companies" element={<AdminCompaniesPage />} />
+            <Route path="/admin/companies/:companyId" element={<AdminCompanyDetailPage />} />
+            <Route path="/admin/companies/:companyId/entities/:entityId/records" element={<RecordsPage />} />
+            <Route path="/admin/companies/:companyId/entities/:entityId/records/new" element={<RecordFormPage />} />
+            <Route path="/admin/companies/:companyId/entities/:entityId/records/:recordId/edit" element={<RecordFormPage />} />
+            <Route path="/admin/access" element={<AdminAccessPage />} />
+            <Route path="/access-expiration" element={<Navigate to="/admin/access" replace />} />
             <Route path="/settings" element={<SettingsPage />} />
           </Route>
         </Route>

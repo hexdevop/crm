@@ -1,7 +1,8 @@
 import uuid
+from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, String, Text
+from sqlalchemy import Boolean, String, Text, DateTime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -24,6 +25,7 @@ class Company(Base, TimestampMixin):
     description: Mapped[str | None] = mapped_column(Text)
     logo_url: Mapped[str | None] = mapped_column(String(500))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    access_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # Relationships
     users: Mapped[list["User"]] = relationship(

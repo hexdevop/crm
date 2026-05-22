@@ -620,11 +620,16 @@ export default function EntityBuilderPage() {
   }, [existing])
 
   const DEFAULT_CONFIGS: Partial<Record<FieldType, Record<string, unknown>>> = {
-    select: { options: [{ value: 'option_1', label: 'Вариант 1' }] },
-    number: {},
-    expiry_date: { warn_days: 30 },
-    quantity_unit: { default_unit: 'шт', units: ['шт', 'кг', 'л', 'м', 'м²', 'м³'] },
-    relation: {},
+    select:             { options: [{ value: 'option_1', label: 'Вариант 1' }] },
+    number:             {},
+    expiry_date:        { warn_days: 30 },
+    quantity_unit:      { default_unit: 'шт', units: ['шт', 'кг', 'л', 'м', 'м²', 'м³'] },
+    relation:           {},
+    price:              { currency: 'UZS', symbol: 'сум', decimals: 0 },
+    autoincrement:      { prefix: '', next_value: 1, padding: 6 },
+    formula:            { formula: '' },
+    status:             { options: [{ value: 'active', label: 'Активный', color: '#22c55e' }, { value: 'inactive', label: 'Неактивный', color: '#64748b' }] },
+    warehouse_location: { placeholder: 'А-12-3' },
   }
 
   const addField = (type: FieldType) => {
@@ -694,7 +699,7 @@ export default function EntityBuilderPage() {
   const isSaving = createEntity.isPending || updateEntity.isPending
 
   return (
-    <div className="max-w-4xl space-y-5">
+    <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <button onClick={() => navigate('/entities')} className="p-2 rounded-lg hover:bg-slate-100 text-slate-500">
@@ -709,95 +714,92 @@ export default function EntityBuilderPage() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        {/* Left */}
-        <div className="space-y-4">
-          <Card>
-            <CardHeader><p className="text-sm font-semibold text-slate-900">Основное</p></CardHeader>
-            <CardBody className="space-y-4">
-              <Input label="Название" value={name} required placeholder="Клиенты"
-                onChange={(e) => { setName(e.target.value); if (!isEdit) setSlug(slugifyEntity(e.target.value)) }} />
-              <Input label="Slug" value={slug} placeholder="klienty" hint="Уникальный URL-идентификатор"
-                onChange={(e) => setSlug(slugifyEntity(e.target.value))} />
-              <Input label="Описание" value={description} placeholder="Краткое описание..."
-                onChange={(e) => setDescription(e.target.value)} />
-              <div>
-                <label className="label">Иконка</label>
-                <div className="flex flex-wrap gap-1.5 mt-1">
-                  {ICONS.map((ic) => (
-                    <button key={ic} type="button" onClick={() => setIcon(ic)}
-                      className={`w-9 h-9 rounded-lg text-lg flex items-center justify-center transition-all border ${
-                        icon === ic ? 'ring-2 ring-brand-500 bg-brand-50 border-brand-300 scale-110' : 'border-slate-200 hover:bg-slate-50'}`}>
-                      {ic}
-                    </button>
-                  ))}
-                </div>
+      <div className="grid grid-cols-1 lg:grid-cols-[260px_200px_1fr] gap-5 items-start">
+        {/* Col 1 — basic info */}
+        <Card>
+          <CardHeader><p className="text-sm font-semibold text-slate-900">Основное</p></CardHeader>
+          <CardBody className="space-y-4">
+            <Input label="Название" value={name} required placeholder="Клиенты"
+              onChange={(e) => { setName(e.target.value); if (!isEdit) setSlug(slugifyEntity(e.target.value)) }} />
+            <Input label="Slug" value={slug} placeholder="klienty" hint="Уникальный URL-идентификатор"
+              onChange={(e) => setSlug(slugifyEntity(e.target.value))} />
+            <Input label="Описание" value={description} placeholder="Краткое описание..."
+              onChange={(e) => setDescription(e.target.value)} />
+            <div>
+              <label className="label">Иконка</label>
+              <div className="flex flex-wrap gap-1.5 mt-1">
+                {ICONS.map((ic) => (
+                  <button key={ic} type="button" onClick={() => setIcon(ic)}
+                    className={`w-9 h-9 rounded-lg text-lg flex items-center justify-center transition-all border ${
+                      icon === ic ? 'ring-2 ring-brand-500 bg-brand-50 border-brand-300 scale-110' : 'border-slate-200 hover:bg-slate-50'}`}>
+                    {ic}
+                  </button>
+                ))}
               </div>
-              <div>
-                <label className="label">Цвет</label>
-                <div className="flex gap-2 flex-wrap mt-1">
-                  {COLORS.map((c) => (
-                    <button key={c} type="button" onClick={() => setColor(c)}
-                      className={`w-7 h-7 rounded-lg border-2 transition-all ${color === c ? 'border-slate-800 scale-110 shadow-md' : 'border-transparent hover:scale-105'}`}
-                      style={{ background: c }} />
-                  ))}
-                </div>
-              </div>
-            </CardBody>
-          </Card>
-
-          <Card>
-            <CardHeader><p className="text-sm font-semibold text-slate-900">Добавить поле</p></CardHeader>
-            <div className="p-3 space-y-1">
-              {FIELD_TYPES.map((ft) => (
-                <button key={ft.type} type="button" onClick={() => addField(ft.type)}
-                  className="w-full flex items-center gap-3 p-2.5 rounded-xl border border-slate-200 hover:border-brand-300 hover:bg-brand-50 transition-colors text-left group">
-                  <span className="text-lg shrink-0">{ft.icon}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold text-slate-700 group-hover:text-brand-700">{ft.label}</p>
-                    <p className="text-xs text-slate-400 truncate">{ft.desc}</p>
-                  </div>
-                  <Plus size={12} className="text-slate-300 group-hover:text-brand-500 shrink-0" />
-                </button>
-              ))}
             </div>
-          </Card>
-        </div>
-
-        {/* Right — fields */}
-        <div className="lg:col-span-2">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-semibold text-slate-900">
-                  Поля <span className="text-slate-400 font-normal ml-1">({fields.length})</span>
-                </p>
-                {fields.length > 0 && (
-                  <p className="text-xs text-slate-400">Перетаскивайте чтобы изменить порядок</p>
-                )}
+            <div>
+              <label className="label">Цвет</label>
+              <div className="flex gap-2 flex-wrap mt-1">
+                {COLORS.map((c) => (
+                  <button key={c} type="button" onClick={() => setColor(c)}
+                    className={`w-7 h-7 rounded-lg border-2 transition-all ${color === c ? 'border-slate-800 scale-110 shadow-md' : 'border-transparent hover:scale-105'}`}
+                    style={{ background: c }} />
+                ))}
               </div>
-            </CardHeader>
+            </div>
+          </CardBody>
+        </Card>
 
-            {fields.length === 0 ? (
-              <div className="py-16 text-center">
-                <div className="text-5xl mb-3 opacity-40">🏗️</div>
-                <p className="text-sm font-medium text-slate-500">Нет полей</p>
-                <p className="text-xs text-slate-400 mt-1">Выберите тип поля слева чтобы добавить</p>
-              </div>
-            ) : (
-              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                <SortableContext items={fields.map((f) => f._id)} strategy={verticalListSortingStrategy}>
-                  {fields.map((field) => (
-                    <SortableField key={field._id} field={field}
-                      updateField={updateField} removeField={removeField}
-                      toggleExpand={toggleExpand} currentEntityId={id}
-                      allFields={fields} />
-                  ))}
-                </SortableContext>
-              </DndContext>
-            )}
-          </Card>
-        </div>
+        {/* Col 2 — field type picker */}
+        <Card>
+          <CardHeader><p className="text-sm font-semibold text-slate-900">Добавить поле</p></CardHeader>
+          <div className="p-2 space-y-0.5">
+            {FIELD_TYPES.map((ft) => (
+              <button key={ft.type} type="button" onClick={() => addField(ft.type)}
+                className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg border border-transparent hover:border-brand-200 hover:bg-brand-50 transition-colors text-left group">
+                <span className="text-base shrink-0">{ft.icon}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-slate-700 group-hover:text-brand-700 leading-tight">{ft.label}</p>
+                  <p className="text-xs text-slate-400 truncate leading-tight">{ft.desc}</p>
+                </div>
+                <Plus size={11} className="text-slate-300 group-hover:text-brand-500 shrink-0" />
+              </button>
+            ))}
+          </div>
+        </Card>
+
+        {/* Col 3 — fields list */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-semibold text-slate-900">
+                Поля <span className="text-slate-400 font-normal ml-1">({fields.length})</span>
+              </p>
+              {fields.length > 0 && (
+                <p className="text-xs text-slate-400">Перетаскивайте чтобы изменить порядок</p>
+              )}
+            </div>
+          </CardHeader>
+
+          {fields.length === 0 ? (
+            <div className="py-12 text-center">
+              <div className="text-4xl mb-2 opacity-30">🏗️</div>
+              <p className="text-sm font-medium text-slate-500">Нет полей</p>
+              <p className="text-xs text-slate-400 mt-1">Нажмите на тип поля слева чтобы добавить</p>
+            </div>
+          ) : (
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <SortableContext items={fields.map((f) => f._id)} strategy={verticalListSortingStrategy}>
+                {fields.map((field) => (
+                  <SortableField key={field._id} field={field}
+                    updateField={updateField} removeField={removeField}
+                    toggleExpand={toggleExpand} currentEntityId={id}
+                    allFields={fields} />
+                ))}
+              </SortableContext>
+            </DndContext>
+          )}
+        </Card>
       </div>
     </div>
   )

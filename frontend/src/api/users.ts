@@ -3,7 +3,7 @@ import type { User, UserCreate, UserUpdate } from '@/types/user'
 import type { PaginatedResponse, MessageResponse } from '@/types/common'
 
 export const usersApi = {
-  list: (params?: { page?: number; size?: number; search?: string; is_active?: boolean }) =>
+  list: (params?: { page?: number; size?: number; search?: string; is_active?: boolean; company_id?: string }) =>
     apiClient.get<PaginatedResponse<User>>('/users', { params }).then((r) => r.data),
 
   get: (id: string) =>

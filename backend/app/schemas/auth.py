@@ -17,6 +17,7 @@ def validate_email_with_superadmin(v: str) -> str:
 class RegisterRequest(BaseModel):
     company_name: str
     company_slug: str
+    company_description: str | None = None
     first_name: str
     last_name: str
     email: str

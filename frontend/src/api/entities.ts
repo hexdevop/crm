@@ -3,8 +3,8 @@ import type { Entity, EntityField, EntityCreate, EntityFieldCreate, EntityRecord
 import type { PaginatedResponse } from '@/types/common'
 
 export const entitiesApi = {
-  list: () =>
-    apiClient.get<Entity[]>('/entities').then((r) => r.data),
+  list: (params?: { company_id?: string }) =>
+    apiClient.get<Entity[]>('/entities', { params }).then((r) => r.data),
 
   get: (id: string) =>
     apiClient.get<Entity>(`/entities/${id}`).then((r) => r.data),

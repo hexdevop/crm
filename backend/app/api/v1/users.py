@@ -39,9 +39,11 @@ async def list_users(
     size: int = Query(default=25, ge=1, le=100),
     search: str | None = Query(default=None),
     is_active: bool | None = Query(default=None),
+    company_id: uuid.UUID | None = Query(default=None),
 ):
     params = PageParams(page=page, size=size)
-    service = UserService(db, current_user.company_id)
+    effective_company_id = company_id if current_user.is_superadmin and company_id else current_user.company_id
+    service = UserService(db, effective_company_id)
     users, total = await service.list_users(
         offset=params.offset,
         limit=params.size,

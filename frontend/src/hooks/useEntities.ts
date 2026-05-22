@@ -4,8 +4,11 @@ import { entitiesApi } from '@/api/entities'
 import { getApiError } from '@/api/client'
 import type { EntityCreate, EntityFieldCreate } from '@/types/entity'
 
-export function useEntities() {
-  return useQuery({ queryKey: ['entities'], queryFn: entitiesApi.list })
+export function useEntities(params?: { company_id?: string }) {
+  return useQuery({
+    queryKey: ['entities', params],
+    queryFn: () => entitiesApi.list(params),
+  })
 }
 
 export function useEntity(id: string) {

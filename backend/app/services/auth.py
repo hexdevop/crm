@@ -60,6 +60,7 @@ class AuthService:
         company = await company_repo.create(
             name=data.company_name,
             slug=data.company_slug,
+            description=data.company_description,
         )
 
         # Create system permissions if they don't exist

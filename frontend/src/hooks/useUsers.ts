@@ -4,7 +4,7 @@ import { usersApi } from '@/api/users'
 import { getApiError } from '@/api/client'
 import type { UserCreate, UserUpdate } from '@/types/user'
 
-export function useUsers(params?: { page?: number; size?: number; search?: string; is_active?: boolean }) {
+export function useUsers(params?: { page?: number; size?: number; search?: string; is_active?: boolean; company_id?: string }) {
   return useQuery({
     queryKey: ['users', params],
     queryFn: () => usersApi.list(params),

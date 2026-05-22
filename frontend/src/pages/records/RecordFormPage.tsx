@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { useEffect, useRef, useState } from 'react'
 import { ArrowLeft, Save, Package, Upload, X, FileText } from 'lucide-react'
 import { useEntity, useCreateRecord, useUpdateRecord } from '@/hooks/useEntities'
@@ -482,6 +482,8 @@ function FieldInput({
 export default function RecordFormPage() {
   const { entityId, recordId } = useParams<{ entityId: string; recordId?: string }>()
   const navigate = useNavigate()
+  const location = useLocation()
+  const backUrl: string = (location.state as any)?.backUrl ?? `/entities/${entityId}/records`
   const isEdit = !!recordId
 
   const { data: entity, isLoading: entityLoading } = useEntity(entityId!)
@@ -515,12 +517,12 @@ export default function RecordFormPage() {
     if (isEdit) {
       updateRecord.mutate(
         { entityId: entityId!, recordId: recordId!, data: formData },
-        { onSuccess: () => navigate(`/entities/${entityId}/records`) }
+        { onSuccess: () => navigate(backUrl) }
       )
     } else {
       createRecord.mutate(
         { entityId: entityId!, data: formData },
-        { onSuccess: () => navigate(`/entities/${entityId}/records`) }
+        { onSuccess: () => navigate(backUrl) }
       )
     }
   }
@@ -541,7 +543,7 @@ export default function RecordFormPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <button
-            onClick={() => navigate(`/entities/${entityId}/records`)}
+            onClick={() => navigate(backUrl)}
             className="p-2 rounded-lg hover:bg-slate-100 text-slate-500"
           >
             <ArrowLeft size={18} />

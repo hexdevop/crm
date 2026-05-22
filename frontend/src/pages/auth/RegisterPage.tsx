@@ -13,6 +13,7 @@ const schema = z.object({
     .string()
     .min(2)
     .regex(/^[a-zа-яё0-9-]+$/, 'Только строчные буквы, цифры и дефис'),
+  company_description: z.string().optional(),
   first_name: z.string().min(1, 'Обязательное поле'),
   last_name: z.string().min(1, 'Обязательное поле'),
   email: z.string().email('Неверный email'),
@@ -76,6 +77,17 @@ export default function RegisterPage() {
             error={errors.company_slug?.message}
             {...register('company_slug')}
           />
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              Описание компании <span className="text-slate-400 font-normal">(необязательно)</span>
+            </label>
+            <textarea
+              placeholder="Краткое описание деятельности компании..."
+              rows={2}
+              className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent resize-none"
+              {...register('company_description')}
+            />
+          </div>
         </div>
 
         <div className="space-y-4 pb-4 border-b border-slate-100">
