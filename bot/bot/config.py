@@ -1,8 +1,11 @@
+import os
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+_env_file = None if os.environ.get("ENVIRONMENT") == "production" else ".env"
 
 
 class BotSettings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", case_sensitive=False)
+    model_config = SettingsConfigDict(env_file=_env_file, case_sensitive=False)
 
     BOT_TOKEN: str = ""
     REDIS_URL: str = "redis://localhost:6379/1"

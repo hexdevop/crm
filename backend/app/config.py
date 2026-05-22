@@ -1,11 +1,16 @@
+import os
 from typing import List
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+# In production (Docker), env vars come from docker-compose -- no .env file needed.
+# In local dev, .env is loaded as a fallback.
+_env_file = None if os.environ.get("ENVIRONMENT") == "production" else ".env"
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=_env_file,
         env_file_encoding="utf-8",
         case_sensitive=False,
     )

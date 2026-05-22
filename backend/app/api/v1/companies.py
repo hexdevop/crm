@@ -87,9 +87,15 @@ async def update_company(
     company = await repo.get_by_id(company_id)
     if not company:
         raise NotFoundException("Company")
-    updated = await repo.update(company, **data.model_dump(exclude_none=True))
+    # Use exclude_unset so explicitly-null fields (e.g. access_expires_at=null) are applied
+    for key, value in data.model_dump(exclude_unset=True).items():
+        if hasattr(company, key):
+            setattr(company, key, value)
+    db.add(company)
+    await db.flush()
+    await db.refresh(company)
     await db.commit()
-    return updated
+    return company
 
 
 @router.delete("/{company_id}", status_code=204)

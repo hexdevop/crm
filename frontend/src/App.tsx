@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom'
 import { useEffect } from 'react'
 import { useAuthStore, useIsSuperAdmin } from '@/store/auth.store'
 import { authApi } from '@/api/auth'
@@ -38,6 +38,13 @@ function RootRedirect() {
   return <Navigate to={isSuperAdmin ? '/admin/overview' : '/dashboard'} replace />
 }
 
+// Prevents super admins from accessing regular user pages
+function RegularUserRoute() {
+  const isSuperAdmin = useIsSuperAdmin()
+  if (isSuperAdmin) return <Navigate to="/admin/overview" replace />
+  return <Outlet />
+}
+
 function App() {
   const { isAuthenticated, setUser } = useAuthStore()
 
@@ -61,21 +68,24 @@ function App() {
         <Route element={<ProtectedRoute />}>
           <Route element={<AppLayout />}>
             <Route index element={<RootRedirect />} />
-            <Route path="/dashboard" element={<DashboardPage />} />
 
-            <Route path="/users" element={<UsersPage />} />
-            <Route path="/users/:id" element={<UserDetailPage />} />
+            {/* Regular user pages — super admin is redirected away */}
+            <Route element={<RegularUserRoute />}>
+              <Route path="/dashboard" element={<DashboardPage />} />
+              <Route path="/users" element={<UsersPage />} />
+              <Route path="/users/:id" element={<UserDetailPage />} />
+              <Route path="/roles" element={<RolesPage />} />
+              <Route path="/roles/:id" element={<RoleDetailPage />} />
+              <Route path="/entities" element={<EntitiesPage />} />
+              <Route path="/entities/new" element={<EntityBuilderPage />} />
+              <Route path="/entities/:id/edit" element={<EntityBuilderPage />} />
+              <Route path="/entities/:entityId/records" element={<RecordsPage />} />
+              <Route path="/entities/:entityId/records/new" element={<RecordFormPage />} />
+              <Route path="/entities/:entityId/records/:recordId/edit" element={<RecordFormPage />} />
+              <Route path="/settings" element={<SettingsPage />} />
+            </Route>
 
-            <Route path="/roles" element={<RolesPage />} />
-            <Route path="/roles/:id" element={<RoleDetailPage />} />
-
-            <Route path="/entities" element={<EntitiesPage />} />
-            <Route path="/entities/new" element={<EntityBuilderPage />} />
-            <Route path="/entities/:id/edit" element={<EntityBuilderPage />} />
-            <Route path="/entities/:entityId/records" element={<RecordsPage />} />
-            <Route path="/entities/:entityId/records/new" element={<RecordFormPage />} />
-            <Route path="/entities/:entityId/records/:recordId/edit" element={<RecordFormPage />} />
-
+            {/* Super admin pages */}
             <Route path="/admin" element={<Navigate to="/admin/overview" replace />} />
             <Route path="/admin/overview" element={<AdminOverviewPage />} />
             <Route path="/admin/companies" element={<AdminCompaniesPage />} />
@@ -85,7 +95,6 @@ function App() {
             <Route path="/admin/companies/:companyId/entities/:entityId/records/:recordId/edit" element={<RecordFormPage />} />
             <Route path="/admin/access" element={<AdminAccessPage />} />
             <Route path="/access-expiration" element={<Navigate to="/admin/access" replace />} />
-            <Route path="/settings" element={<SettingsPage />} />
           </Route>
         </Route>
 
