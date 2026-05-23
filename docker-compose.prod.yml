@@ -55,20 +55,12 @@ services:
       args:
         - BUILDKIT_INLINE_CACHE=1
     container_name: crm_backend
+    env_file: .env.prod
     environment:
+      # Docker-internal URLs — constructed from .env.prod credentials
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-crm}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-crm_db}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
-      SECRET_KEY: ${SECRET_KEY:?SECRET_KEY is required}
-      ALGORITHM: HS256
-      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-15}
-      REFRESH_TOKEN_EXPIRE_DAYS: ${REFRESH_TOKEN_EXPIRE_DAYS:-7}
       ENVIRONMENT: production
-      BOT_TOKEN: ${BOT_TOKEN:-}
-      WEBHOOK_URL: ${WEBHOOK_URL:-}
-      INTERNAL_BOT_TOKEN: ${INTERNAL_BOT_TOKEN:?INTERNAL_BOT_TOKEN is required}
-      CORS_ORIGINS: ${CORS_ORIGINS:-'["https://example.com"]'}
-      SUPERADMIN_EMAIL: ${SUPERADMIN_EMAIL:-admin@example.com}
-      SUPERADMIN_PASSWORD: ${SUPERADMIN_PASSWORD:?SUPERADMIN_PASSWORD is required}
     depends_on:
       postgres:
         condition: service_healthy
@@ -114,13 +106,12 @@ services:
       context: ./bot
       dockerfile: Dockerfile
     container_name: crm_bot
+    env_file: .env.prod
     environment:
-      ENVIRONMENT: production
-      BOT_TOKEN: ${BOT_TOKEN:?BOT_TOKEN is required}
+      # Docker-internal URLs — override .env.prod values
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/1
       BACKEND_INTERNAL_URL: http://backend:8000
-      INTERNAL_BOT_TOKEN: ${INTERNAL_BOT_TOKEN:?INTERNAL_BOT_TOKEN is required}
-      TELEGRAM_PROXY: ${TELEGRAM_PROXY:-}
+      ENVIRONMENT: production
     depends_on:
       redis:
         condition: service_healthy
