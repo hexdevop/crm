@@ -28,8 +28,8 @@ function StatCard({
     <Card hover={!!to} onClick={undefined} className="p-6">
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-sm text-slate-500 font-medium">{title}</p>
-          <p className="text-3xl font-bold text-slate-900 mt-2">{value}</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">{title}</p>
+          <p className="text-3xl font-bold text-slate-900 dark:text-slate-100 mt-2">{value}</p>
           {trend && (
             <p className="text-xs text-emerald-600 mt-1 flex items-center gap-1">
               <TrendingUp size={12} /> {trend}
@@ -106,7 +106,7 @@ export default function DashboardPage() {
 
       {/* Entities summary */}
       <div>
-        <h3 className="text-sm font-semibold text-slate-900 mb-3">Ваши сущности</h3>
+        <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-3">Ваши сущности</h3>
         {isLoading ? (
           <div className="flex justify-center py-8">
             <Spinner />
@@ -138,14 +138,14 @@ export default function DashboardPage() {
                       {entity.icon ?? '📋'}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-slate-900 text-sm truncate">
+                      <p className="font-semibold text-slate-900 dark:text-slate-100 text-sm truncate">
                         {entity.name}
                       </p>
-                      <p className="text-xs text-slate-500">
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
                         {entity.record_count} записей · {entity.fields.length} полей
                       </p>
                     </div>
-                    <ArrowUpRight size={16} className="text-slate-400 shrink-0" />
+                    <ArrowUpRight size={16} className="text-slate-400 dark:text-slate-500 shrink-0" />
                   </div>
                 </Card>
               </Link>

@@ -87,35 +87,35 @@ export default function UsersPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-slate-100">
-                    <th className="text-left px-6 py-3.5 font-medium text-slate-500 text-xs uppercase tracking-wide">
+                  <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40">
+                    <th className="text-left px-6 py-3.5 font-medium text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wide">
                       Пользователь
                     </th>
-                    <th className="text-left px-6 py-3.5 font-medium text-slate-500 text-xs uppercase tracking-wide">
+                    <th className="text-left px-6 py-3.5 font-medium text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wide">
                       Роли
                     </th>
-                    <th className="text-left px-6 py-3.5 font-medium text-slate-500 text-xs uppercase tracking-wide">
+                    <th className="text-left px-6 py-3.5 font-medium text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wide">
                       Статус
                     </th>
-                    <th className="text-left px-6 py-3.5 font-medium text-slate-500 text-xs uppercase tracking-wide">
+                    <th className="text-left px-6 py-3.5 font-medium text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wide">
                       Создан
                     </th>
                     <th className="px-6 py-3.5" />
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-50">
+                <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
                   {data.items.map((user) => (
                     <tr
                       key={user.id}
-                      className="hover:bg-slate-50 transition-colors cursor-pointer"
+                      className="hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors cursor-pointer"
                       onClick={() => navigate(`/users/${user.id}`)}
                     >
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           <Avatar name={user.full_name} size="sm" />
                           <div>
-                            <p className="font-medium text-slate-900">{user.full_name}</p>
-                            <p className="text-xs text-slate-500">{user.email}</p>
+                            <p className="font-medium text-slate-900 dark:text-slate-100">{user.full_name}</p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">{user.email}</p>
                           </div>
                         </div>
                       </td>
@@ -130,7 +130,7 @@ export default function UsersPage() {
                       <td className="px-6 py-4">
                         <StatusBadge active={user.is_active} />
                       </td>
-                      <td className="px-6 py-4 text-slate-500 text-xs">
+                      <td className="px-6 py-4 text-slate-500 dark:text-slate-400 text-xs">
                         {format(new Date(user.created_at), 'dd.MM.yyyy')}
                       </td>
                       <td className="px-6 py-4">
@@ -142,7 +142,7 @@ export default function UsersPage() {
                             onClick={() =>
                               toggleActive.mutate({ id: user.id, active: !user.is_active })
                             }
-                            className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
+                            className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
                             title={user.is_active ? 'Деактивировать' : 'Активировать'}
                           >
                             {user.is_active ? <UserX size={14} /> : <UserCheck size={14} />}
@@ -163,8 +163,8 @@ export default function UsersPage() {
 
             {/* Pagination */}
             {data.pages > 1 && (
-              <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-between">
-                <p className="text-sm text-slate-500">
+              <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                <p className="text-sm text-slate-500 dark:text-slate-400">
                   {data.total} пользователей · стр. {data.page} из {data.pages}
                 </p>
                 <div className="flex gap-2">

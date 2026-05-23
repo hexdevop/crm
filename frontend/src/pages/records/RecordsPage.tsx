@@ -1,9 +1,10 @@
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import {
   Plus, Search, Trash2, Edit2, ChevronLeft, ChevronRight,
-  ArrowLeft, SlidersHorizontal, Package,
+  ArrowLeft, SlidersHorizontal, Package, Filter, X, Check,
 } from 'lucide-react'
+import { cn } from '@/utils/cn'
 import { useEntity, useEntityRecords, useDeleteRecord } from '@/hooks/useEntities'
 import PageHeader from '@/components/ui/PageHeader'
 import Button from '@/components/ui/Button'
@@ -19,11 +20,13 @@ import type { EntityRecord, EntityField } from '@/types/entity'
 
 function formatValue(field: EntityField, value: unknown): React.ReactNode {
   if (value === null || value === undefined || value === '')
-    return <span className="text-slate-300">—</span>
+    return <span className="text-slate-300 dark:text-slate-600">—</span>
 
   switch (field.field_type) {
     case 'boolean':
-      return value ? <Badge variant="green">Да</Badge> : <Badge variant="gray">Нет</Badge>
+      return value
+        ? <Badge variant="green">Да</Badge>
+        : <Badge variant="gray">Нет</Badge>
     case 'select': {
       const opts = (field.config as any)?.options ?? []
       const opt = opts.find((o: any) => o.value === value)
@@ -54,7 +57,7 @@ function formatValue(field: EntityField, value: unknown): React.ReactNode {
       return <span>{String(value)}</span>
     }
     case 'barcode':
-      return <code className="text-xs font-mono bg-slate-100 px-1.5 py-0.5 rounded">{String(value)}</code>
+      return <code className="text-xs font-mono bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">{String(value)}</code>
     case 'relation':
       return <span className="text-xs font-mono text-slate-500">{String(value).slice(0, 8)}…</span>
     case 'email':
@@ -65,21 +68,21 @@ function formatValue(field: EntityField, value: unknown): React.ReactNode {
       const symbol = (field.config as any)?.symbol ?? ''
       const decimals = (field.config as any)?.decimals ?? 2
       const num = parseFloat(String(value))
-      if (isNaN(num)) return <span className="text-slate-700">{String(value)}</span>
+      if (isNaN(num)) return <span className="text-slate-700 dark:text-slate-300">{String(value)}</span>
       const formatted = num.toLocaleString('ru-RU', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })
-      return <span className="font-medium text-slate-700">{formatted} <span className="text-slate-400 text-xs">{symbol}</span></span>
+      return <span className="font-medium text-slate-700 dark:text-slate-200">{formatted} <span className="text-slate-400 text-xs">{symbol}</span></span>
     }
     case 'autoincrement':
-      return <code className="text-xs font-mono bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-md">{String(value)}</code>
+      return <code className="text-xs font-mono bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 px-2 py-0.5 rounded-md">{String(value)}</code>
     case 'formula': {
       const num = parseFloat(String(value))
       return isNaN(num)
-        ? <span className="text-slate-700">{String(value)}</span>
-        : <span className="font-semibold text-slate-800">{num.toLocaleString('ru-RU', { maximumFractionDigits: 4 })}</span>
+        ? <span className="text-slate-700 dark:text-slate-300">{String(value)}</span>
+        : <span className="font-semibold text-slate-800 dark:text-slate-200">{num.toLocaleString('ru-RU', { maximumFractionDigits: 4 })}</span>
     }
     case 'warehouse_location':
       return (
-        <span className="inline-flex items-center gap-1 text-xs font-mono bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md">
+        <span className="inline-flex items-center gap-1 text-xs font-mono bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded-md">
           📍 {String(value)}
         </span>
       )
@@ -98,7 +101,7 @@ function formatValue(field: EntityField, value: unknown): React.ReactNode {
       const url = String(value)
       return (
         <a href={url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>
-          <img src={url} alt="" className="h-8 w-8 object-cover rounded-lg border border-slate-200" />
+          <img src={url} alt="" className="h-8 w-8 object-cover rounded-lg border border-slate-200 dark:border-slate-700" />
         </a>
       )
     }
@@ -125,10 +128,153 @@ function formatValue(field: EntityField, value: unknown): React.ReactNode {
       )
     }
     default:
-      return <span className="text-slate-700 truncate">{String(value)}</span>
+      return <span className="text-slate-700 dark:text-slate-300 truncate">{String(value)}</span>
   }
 }
 
+// ─── FilterPanel ─────────────────────────────────────────────────────────────
+const FILTERABLE_TYPES = new Set(['status', 'select', 'boolean'])
+
+function FilterPill({
+  label,
+  active,
+  color,
+  onClick,
+}: {
+  label: React.ReactNode
+  active: boolean
+  color?: string
+  onClick: () => void
+}) {
+  return (
+    <button
+      onClick={onClick}
+      style={active && color ? { backgroundColor: color, borderColor: color, color: '#fff' } : {}}
+      className={cn(
+        'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all',
+        active && !color
+          ? 'bg-brand-600 border-brand-600 text-white shadow-sm'
+          : !active
+          ? 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700'
+          : ''
+      )}
+    >
+      {active && !color && <Check size={10} strokeWidth={3} />}
+      {label}
+    </button>
+  )
+}
+
+function FilterPanel({
+  fields,
+  filters,
+  onChange,
+  onReset,
+}: {
+  fields: EntityField[]
+  filters: Record<string, string>
+  onChange: (slug: string, value: string) => void
+  onReset: () => void
+}) {
+  const filterable = fields.filter((f) => FILTERABLE_TYPES.has(f.field_type))
+  const activeCount = Object.values(filters).filter((v) => v !== '').length
+
+  if (filterable.length === 0)
+    return (
+      <div className="px-5 py-5 text-sm text-slate-400 dark:text-slate-500 text-center italic">
+        Нет полей для фильтрации
+      </div>
+    )
+
+  return (
+    <div className="px-5 py-4 space-y-4">
+      {filterable.map((f) => {
+        const value = filters[f.slug] ?? ''
+
+        if (f.field_type === 'boolean') {
+          const boolOpts = [
+            { value: '', label: 'Все' },
+            { value: 'true', label: 'Да' },
+            { value: 'false', label: 'Нет' },
+          ]
+          return (
+            <div key={f.id} className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-28 shrink-0">
+                {f.name}
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {boolOpts.map((o) => (
+                  <FilterPill
+                    key={o.value}
+                    label={o.label}
+                    active={value === o.value}
+                    onClick={() => onChange(f.slug, o.value)}
+                  />
+                ))}
+              </div>
+            </div>
+          )
+        }
+
+        const opts: { value: string; label: string; color?: string }[] =
+          (f.config as any)?.options ?? []
+        return (
+          <div key={f.id} className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-28 shrink-0">
+              {f.name}
+            </span>
+            <div className="flex flex-wrap gap-1.5">
+              <FilterPill
+                label="Все"
+                active={value === ''}
+                onClick={() => onChange(f.slug, '')}
+              />
+              {opts.map((o) => (
+                <FilterPill
+                  key={o.value}
+                  label={
+                    f.field_type === 'status' && o.color ? (
+                      <span className="flex items-center gap-1.5">
+                        <span
+                          className="w-2 h-2 rounded-full shrink-0"
+                          style={{ background: o.color }}
+                        />
+                        {o.label}
+                      </span>
+                    ) : (
+                      o.label
+                    )
+                  }
+                  active={value === o.value}
+                  color={f.field_type === 'status' ? o.color : undefined}
+                  onClick={() => onChange(f.slug, o.value)}
+                />
+              ))}
+            </div>
+          </div>
+        )
+      })}
+
+      {activeCount > 0 && (
+        <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center gap-3">
+          <span className="text-xs text-slate-500 dark:text-slate-400">
+            Активных фильтров:{' '}
+            <span className="font-semibold text-brand-600 dark:text-brand-400">{activeCount}</span>
+          </span>
+          <button
+            onClick={onReset}
+            className="ml-auto flex items-center gap-1.5 text-xs font-medium text-red-500 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+          >
+            <X size={12} />
+            Сбросить все
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── RecordsPage ─────────────────────────────────────────────────────────────
 export default function RecordsPage() {
   const { entityId } = useParams<{ entityId: string }>()
   const navigate = useNavigate()
@@ -139,15 +285,36 @@ export default function RecordsPage() {
   const [deleteTarget, setDeleteTarget] = useState<EntityRecord | null>(null)
   const [showColMenu, setShowColMenu] = useState(false)
   const [hiddenCols, setHiddenCols] = useState<Set<string>>(new Set())
+  const [showFilters, setShowFilters] = useState(false)
+  const [filters, setFilters] = useState<Record<string, string>>({})
+
+  const activeFilters = useMemo(
+    () => Object.fromEntries(Object.entries(filters).filter(([, v]) => v !== '')),
+    [filters]
+  )
+  const activeFilterCount = Object.keys(activeFilters).length
 
   const { data: entity, isLoading: entityLoading } = useEntity(entityId!)
   const { data: records, isLoading } = useEntityRecords(entityId!, {
-    page, size: 25, search: search.trim() || undefined,
+    page,
+    size: 25,
+    search: search.trim() || undefined,
+    filters: activeFilterCount > 0 ? activeFilters : undefined,
   })
   const deleteRecord = useDeleteRecord()
 
   const toggleCol = (slug: string) =>
     setHiddenCols((prev) => { const n = new Set(prev); n.has(slug) ? n.delete(slug) : n.add(slug); return n })
+
+  function handleFilterChange(slug: string, value: string) {
+    setFilters((prev) => ({ ...prev, [slug]: value }))
+    setPage(1)
+  }
+
+  function resetFilters() {
+    setFilters({})
+    setPage(1)
+  }
 
   if (entityLoading) return <div className="flex justify-center py-20"><Spinner size="lg" /></div>
   if (!entity) return <div className="text-center py-16 text-slate-500">Сущность не найдена</div>
@@ -159,14 +326,14 @@ export default function RecordsPage() {
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-sm">
         <button onClick={() => navigate(backUrl)}
-          className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 mr-1">
+          className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 mr-1">
           <ArrowLeft size={16} />
         </button>
-        <button onClick={() => navigate(backUrl)} className="text-slate-500 hover:text-slate-700">
+        <button onClick={() => navigate(backUrl)} className="text-slate-500 hover:text-slate-700 dark:hover:text-slate-300">
           Назад
         </button>
-        <span className="text-slate-300">/</span>
-        <span className="font-medium text-slate-900">{entity.name}</span>
+        <span className="text-slate-300 dark:text-slate-600">/</span>
+        <span className="font-medium text-slate-900 dark:text-slate-100">{entity.name}</span>
       </div>
 
       <PageHeader
@@ -180,38 +347,81 @@ export default function RecordsPage() {
       />
 
       {/* Toolbar */}
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <Input placeholder="Поиск по всем полям..." leftIcon={<Search size={16} />}
           value={search} onChange={(e) => { setSearch(e.target.value); setPage(1) }}
           className="max-w-sm" />
 
-        <div className="relative ml-auto">
-          <Button variant="secondary" size="sm" icon={<SlidersHorizontal size={14} />}
-            onClick={() => setShowColMenu((v) => !v)}>
-            Столбцы {hiddenCols.size > 0 && `(${visibleFields.length}/${entity.fields.length})`}
+        <div className="flex items-center gap-2 ml-auto">
+          <Button
+            variant="secondary" size="sm"
+            icon={<Filter size={14} className={activeFilterCount > 0 ? 'text-brand-600' : ''} />}
+            onClick={() => setShowFilters((v) => !v)}
+          >
+            Фильтры {activeFilterCount > 0 && (
+              <span className="ml-1 min-w-[18px] h-[18px] rounded-full bg-brand-600 text-white text-xs inline-flex items-center justify-center px-1">
+                {activeFilterCount}
+              </span>
+            )}
           </Button>
-          {showColMenu && (
-            <>
-              <div className="fixed inset-0 z-10" onClick={() => setShowColMenu(false)} />
-              <div className="absolute right-0 top-full mt-2 z-20 bg-white rounded-xl border border-slate-200 shadow-modal py-2 min-w-[200px] animate-scale-in">
-                <div className="flex items-center justify-between px-3 pb-1.5 border-b border-slate-100 mb-1">
-                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Столбцы</p>
-                  <button className="text-xs text-brand-600 hover:text-brand-700"
-                    onClick={() => setHiddenCols(new Set())}>Все</button>
-                </div>
-                {entity.fields.map((f) => (
-                  <label key={f.id} className="flex items-center gap-2.5 px-3 py-2 hover:bg-slate-50 cursor-pointer">
-                    <input type="checkbox" checked={!hiddenCols.has(f.slug)} onChange={() => toggleCol(f.slug)}
-                      className="accent-brand-600 w-3.5 h-3.5" />
-                    <span className="text-sm text-slate-700">{f.name}</span>
-                    <Badge variant="gray" className="ml-auto text-xs">{f.field_type}</Badge>
-                  </label>
-                ))}
-              </div>
-            </>
+
+          {activeFilterCount > 0 && (
+            <button onClick={resetFilters}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+              title="Сбросить фильтры">
+              <X size={14} />
+            </button>
           )}
+
+          <div className="relative">
+            <Button variant="secondary" size="sm" icon={<SlidersHorizontal size={14} />}
+              onClick={() => setShowColMenu((v) => !v)}>
+              Столбцы {hiddenCols.size > 0 && `(${visibleFields.length}/${entity.fields.length})`}
+            </Button>
+            {showColMenu && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setShowColMenu(false)} />
+                <div className="absolute right-0 top-full mt-2 z-20 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 shadow-modal py-2 min-w-[200px] animate-scale-in">
+                  <div className="flex items-center justify-between px-3 pb-1.5 border-b border-slate-100 dark:border-slate-800 mb-1">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Столбцы</p>
+                    <button className="text-xs text-brand-600 hover:text-brand-700"
+                      onClick={() => setHiddenCols(new Set())}>Все</button>
+                  </div>
+                  {entity.fields.map((f) => (
+                    <label key={f.id} className="flex items-center gap-2.5 px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer">
+                      <input type="checkbox" checked={!hiddenCols.has(f.slug)} onChange={() => toggleCol(f.slug)}
+                        className="accent-brand-600 w-3.5 h-3.5" />
+                      <span className="text-sm text-slate-700 dark:text-slate-300">{f.name}</span>
+                      <Badge variant="gray" className="ml-auto text-xs">{f.field_type}</Badge>
+                    </label>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
+
+      {/* Filter panel */}
+      {showFilters && (
+        <Card>
+          <div className="flex items-center justify-between px-4 pt-3 pb-1">
+            <p className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
+              <Filter size={14} /> Фильтры
+            </p>
+            <button onClick={() => setShowFilters(false)}
+              className="p-1 rounded text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
+              <X size={14} />
+            </button>
+          </div>
+          <FilterPanel
+            fields={entity.fields}
+            filters={filters}
+            onChange={handleFilterChange}
+            onReset={resetFilters}
+          />
+        </Card>
+      )}
 
       {/* Table card */}
       <Card>
@@ -220,8 +430,8 @@ export default function RecordsPage() {
         ) : !records?.items.length ? (
           <EmptyState
             title="Нет записей"
-            description={search ? 'По вашему запросу ничего не найдено' : 'Добавьте первую запись'}
-            action={!search ? {
+            description={search || activeFilterCount > 0 ? 'По вашему запросу ничего не найдено' : 'Добавьте первую запись'}
+            action={!search && !activeFilterCount ? {
               label: 'Добавить запись',
               onClick: () => navigate(`${location.pathname}/new`, { state: { backUrl: location.pathname } }),
             } : undefined}
@@ -231,11 +441,11 @@ export default function RecordsPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-slate-100 bg-slate-50/60">
+                  <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40">
                     <th className="text-left px-4 py-3 text-xs text-slate-400 font-medium w-10 whitespace-nowrap">#</th>
                     {visibleFields.map((f) => (
                       <th key={f.id}
-                        className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap">
+                        className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide whitespace-nowrap">
                         {f.name}
                         {f.is_required && <span className="text-red-400 ml-0.5">*</span>}
                       </th>
@@ -246,10 +456,10 @@ export default function RecordsPage() {
                     <th className="px-4 py-3 w-16" />
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-50">
+                <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
                   {records.items.map((record, idx) => (
                     <tr key={record.id}
-                      className="hover:bg-slate-50 transition-colors group cursor-pointer"
+                      className="hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors group cursor-pointer"
                       onClick={() => navigate(`${location.pathname}/${record.id}/edit`, { state: { backUrl: location.pathname } })}>
                       <td className="px-4 py-3.5 text-xs text-slate-400 font-mono">
                         {(page - 1) * 25 + idx + 1}
@@ -272,19 +482,19 @@ export default function RecordsPage() {
                                 btn?.click()
                               }, 100)
                             }}
-                            className="p-1.5 rounded-lg hover:bg-emerald-50 text-slate-400 hover:text-emerald-600 transition-colors"
+                            className="p-1.5 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/20 text-slate-400 hover:text-emerald-600 transition-colors"
                             title="Движения товара">
                             <Package size={13} />
                           </button>
                           <button
                             onClick={() => navigate(`${location.pathname}/${record.id}/edit`, { state: { backUrl: location.pathname } })}
-                            className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-brand-600 transition-colors"
+                            className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 hover:text-brand-600 transition-colors"
                             title="Редактировать">
                             <Edit2 size={13} />
                           </button>
                           <button
                             onClick={() => setDeleteTarget(record)}
-                            className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors"
+                            className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-400 hover:text-red-500 transition-colors"
                             title="Удалить">
                             <Trash2 size={13} />
                           </button>
@@ -298,22 +508,18 @@ export default function RecordsPage() {
 
             {/* Pagination */}
             {records.pages > 1 && (
-              <div className="px-4 py-3.5 border-t border-slate-100 flex items-center justify-between">
-                <p className="text-sm text-slate-500">
+              <div className="px-4 py-3.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                <p className="text-sm text-slate-500 dark:text-slate-400">
                   {records.total} записей · страница {records.page} из {records.pages}
                 </p>
                 <div className="flex items-center gap-1">
-                  <Button variant="ghost" size="sm" disabled={page === 1}
-                    onClick={() => setPage(1)} title="Первая">«</Button>
-                  <Button variant="ghost" size="sm" disabled={page === 1}
-                    icon={<ChevronLeft size={14} />} onClick={() => setPage((p) => p - 1)} />
-                  <span className="px-3 text-sm font-medium text-slate-700">{page}</span>
-                  <Button variant="ghost" size="sm" disabled={page === records.pages}
-                    onClick={() => setPage((p) => p + 1)}>
+                  <Button variant="ghost" size="sm" disabled={page === 1} onClick={() => setPage(1)} title="Первая">«</Button>
+                  <Button variant="ghost" size="sm" disabled={page === 1} icon={<ChevronLeft size={14} />} onClick={() => setPage((p) => p - 1)} />
+                  <span className="px-3 text-sm font-medium text-slate-700 dark:text-slate-300">{page}</span>
+                  <Button variant="ghost" size="sm" disabled={page === records.pages} onClick={() => setPage((p) => p + 1)}>
                     <ChevronRight size={14} />
                   </Button>
-                  <Button variant="ghost" size="sm" disabled={page === records.pages}
-                    onClick={() => setPage(records.pages)} title="Последняя">»</Button>
+                  <Button variant="ghost" size="sm" disabled={page === records.pages} onClick={() => setPage(records.pages)} title="Последняя">»</Button>
                 </div>
               </div>
             )}

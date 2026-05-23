@@ -72,21 +72,21 @@ export default function EntitiesPage() {
                       {entity.icon ?? '📋'}
                     </div>
                     <div>
-                      <h3 className="font-semibold text-slate-900">{entity.name}</h3>
-                      <p className="text-xs text-slate-500">{entity.slug}</p>
+                      <h3 className="font-semibold text-slate-900 dark:text-slate-100">{entity.name}</h3>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">{entity.slug}</p>
                     </div>
                   </div>
                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
                       onClick={() => navigate(`/entities/${entity.id}/edit`)}
-                      className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
+                      className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
                       title="Редактировать"
                     >
                       <Settings2 size={14} />
                     </button>
                     <button
                       onClick={() => setDeleteTarget(entity)}
-                      className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors"
+                      className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-400 hover:text-red-500 transition-colors"
                     >
                       <Trash2 size={14} />
                     </button>
@@ -94,7 +94,7 @@ export default function EntitiesPage() {
                 </div>
 
                 {entity.description && (
-                  <p className="text-sm text-slate-500 mb-4 line-clamp-2">{entity.description}</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 mb-4 line-clamp-2">{entity.description}</p>
                 )}
 
                 {/* Field types */}
@@ -109,13 +109,13 @@ export default function EntitiesPage() {
                   )}
                 </div>
 
-                <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+                <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800">
                   <div className="flex gap-4">
-                    <span className="text-xs text-slate-500">
-                      <span className="font-semibold text-slate-900">{entity.fields.length}</span> полей
+                    <span className="text-xs text-slate-500 dark:text-slate-400">
+                      <span className="font-semibold text-slate-900 dark:text-slate-100">{entity.fields.length}</span> полей
                     </span>
-                    <span className="text-xs text-slate-500">
-                      <span className="font-semibold text-slate-900">{entity.record_count}</span> записей
+                    <span className="text-xs text-slate-500 dark:text-slate-400">
+                      <span className="font-semibold text-slate-900 dark:text-slate-100">{entity.record_count}</span> записей
                     </span>
                   </div>
                   <button

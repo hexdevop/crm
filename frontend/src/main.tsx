@@ -5,6 +5,9 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { Toaster } from 'react-hot-toast'
 import App from './App'
 import './index.css'
+import { initTheme } from './store/theme.store'
+
+initTheme()
 
 const queryClient = new QueryClient({
   defaultOptions: {

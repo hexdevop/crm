@@ -34,11 +34,17 @@ export const entitiesApi = {
   // Records
   listRecords: (
     entityId: string,
-    params?: { page?: number; size?: number; search?: string; sort?: string; order?: string }
-  ) =>
-    apiClient
-      .get<PaginatedResponse<EntityRecord>>(`/entities/${entityId}/records`, { params })
-      .then((r) => r.data),
+    params?: { page?: number; size?: number; search?: string; sort?: string; order?: string; filters?: Record<string, string> }
+  ) => {
+    const { filters, ...rest } = params ?? {}
+    const apiParams: Record<string, unknown> = { ...rest }
+    if (filters && Object.keys(filters).length > 0) {
+      apiParams.filters = JSON.stringify(filters)
+    }
+    return apiClient
+      .get<PaginatedResponse<EntityRecord>>(`/entities/${entityId}/records`, { params: apiParams })
+      .then((r) => r.data)
+  },
 
   getRecord: (entityId: string, recordId: string) =>
     apiClient.get<EntityRecord>(`/entities/${entityId}/records/${recordId}`).then((r) => r.data),

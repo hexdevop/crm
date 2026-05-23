@@ -59,7 +59,7 @@ export function useDeleteEntity() {
 
 export function useEntityRecords(
   entityId: string,
-  params?: { page?: number; size?: number; search?: string; sort?: string; order?: string }
+  params?: { page?: number; size?: number; search?: string; sort?: string; order?: string; filters?: Record<string, string> }
 ) {
   return useQuery({
     queryKey: ['records', entityId, params],

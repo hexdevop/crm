@@ -28,13 +28,22 @@ async def list_records(
     search: str | None = Query(default=None),
     sort: str | None = Query(default=None),
     order: str = Query(default="desc", pattern="^(asc|desc)$"),
+    filters: str | None = Query(default=None),
 ):
+    import json
+    filter_dict: dict[str, Any] | None = None
+    if filters:
+        try:
+            filter_dict = json.loads(filters)
+        except (json.JSONDecodeError, ValueError):
+            pass
     params = PageParams(page=page, size=size)
     service = EntityRecordService(db, current_user.company_id)
     records, total = await service.list_records(
         entity_id=entity_id,
         params=params,
         search=search,
+        filters=filter_dict,
         sort_field=sort,
         sort_order=order,
     )

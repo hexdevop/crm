@@ -67,8 +67,8 @@ function OverviewTab({ companies, usersTotal }: { companies: Company[]; usersTot
                   <s.icon size={18} className="text-white" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-slate-900">{s.value}</p>
-                  <p className="text-xs text-slate-500">{s.label}</p>
+                  <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{s.value}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{s.label}</p>
                 </div>
               </div>
             </CardBody>
@@ -77,16 +77,16 @@ function OverviewTab({ companies, usersTotal }: { companies: Company[]; usersTot
       </div>
 
       <Card>
-        <CardHeader><p className="text-sm font-semibold text-slate-900">Последние компании</p></CardHeader>
-        <div className="divide-y divide-slate-50">
+        <CardHeader><p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Последние компании</p></CardHeader>
+        <div className="divide-y divide-slate-50 dark:divide-slate-800">
           {companies.slice(0, 8).map((c) => (
             <div key={c.id} className="flex items-center gap-3 px-5 py-3">
-              <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center shrink-0">
-                <Building2 size={14} className="text-indigo-600" />
+              <div className="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center shrink-0">
+                <Building2 size={14} className="text-indigo-600 dark:text-indigo-400" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-slate-900 truncate">{c.name}</p>
-                <p className="text-xs text-slate-400 truncate">{c.slug}</p>
+                <p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">{c.name}</p>
+                <p className="text-xs text-slate-400 dark:text-slate-500 truncate">{c.slug}</p>
               </div>
               <Badge variant={c.is_active ? 'green' : 'gray'} dot>
                 {c.is_active ? 'Активна' : 'Неактивна'}
@@ -192,31 +192,61 @@ function CompanyDetailView({ company }: { company: Company }) {
   return (
     <div className="space-y-4">
       {/* Breadcrumb */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-1.5 text-sm text-slate-500 dark:text-slate-400">
         <button
           onClick={() => navigate('/admin/companies')}
-          className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition-colors"
+          className="flex items-center gap-1 hover:text-slate-900 dark:hover:text-slate-100 transition-colors"
         >
-          <ArrowLeft size={16} />
+          <ArrowLeft size={14} />
           Компании
         </button>
-        <span className="text-slate-300">/</span>
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-indigo-100 flex items-center justify-center shrink-0">
-            <Building2 size={13} className="text-indigo-600" />
+        <span className="text-slate-300 dark:text-slate-600">/</span>
+        <span className="text-slate-900 dark:text-slate-100 font-medium truncate">{company.name}</span>
+      </div>
+
+      {/* Company header */}
+      <div className="rounded-2xl p-6 bg-gradient-to-br from-indigo-600 to-violet-600 text-white">
+        <div className="flex items-start gap-4">
+          <div className="w-14 h-14 rounded-2xl bg-white/20 ring-2 ring-white/30 flex items-center justify-center shrink-0">
+            <Building2 size={26} />
           </div>
-          <span className="font-semibold text-slate-900">{company.name}</span>
-          <Badge variant={company.is_active ? 'green' : 'gray'} dot>
-            {company.is_active ? 'Активна' : 'Неактивна'}
-          </Badge>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="text-xl font-bold">{company.name}</h1>
+              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
+                company.is_active ? 'bg-emerald-400/20 text-emerald-100' : 'bg-white/10 text-white/60'
+              }`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${company.is_active ? 'bg-emerald-300' : 'bg-white/40'}`} />
+                {company.is_active ? 'Активна' : 'Неактивна'}
+              </span>
+            </div>
+            {company.description && (
+              <p className="text-indigo-200 text-sm mt-1 truncate">{company.description}</p>
+            )}
+            <p className="text-indigo-200/70 text-xs mt-0.5 font-mono">{company.slug}</p>
+          </div>
+        </div>
+
+        <div className="mt-5 grid grid-cols-3 gap-3">
+          {[
+            { label: 'Пользователей', value: usersLoading ? '…' : users.length },
+            { label: 'Сущностей', value: entitiesLoading ? '…' : (entities?.length ?? 0) },
+            { label: 'Создана', value: format(new Date(company.created_at), 'dd MMM yyyy', { locale: ru }) },
+          ].map(s => (
+            <div key={s.label} className="bg-white/10 rounded-xl px-4 py-3">
+              <p className="text-lg font-bold">{s.value}</p>
+              <p className="text-xs text-indigo-200">{s.label}</p>
+            </div>
+          ))}
         </div>
       </div>
 
-      <div className="flex border-b border-slate-200 gap-1">
+      {/* Tabs */}
+      <div className="flex border-b border-slate-200 dark:border-slate-800 gap-1">
         {COMPANY_TABS.map((t) => (
           <button key={t.id} onClick={() => setCtab(t.id)}
             className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px ${
-              ctab === t.id ? 'border-brand-600 text-brand-600' : 'border-transparent text-slate-500 hover:text-slate-900'
+              ctab === t.id ? 'border-brand-600 text-brand-600' : 'border-transparent text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100'
             }`}>
             <t.icon size={15} />
             {t.label}
@@ -231,26 +261,26 @@ function CompanyDetailView({ company }: { company: Company }) {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-slate-100 bg-slate-50/60">
-                    <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Пользователь</th>
-                    <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Email</th>
-                    <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Роли</th>
-                    <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Статус</th>
+                  <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40">
+                    <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Пользователь</th>
+                    <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Email</th>
+                    <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Роли</th>
+                    <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Статус</th>
                     <th className="px-5 py-3 w-32" />
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-50">
+                <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
                   {users.length === 0 ? (
-                    <tr><td colSpan={5} className="px-5 py-12 text-center text-slate-400 text-sm">Нет пользователей</td></tr>
+                    <tr><td colSpan={5} className="px-5 py-12 text-center text-slate-400 dark:text-slate-500 text-sm">Нет пользователей</td></tr>
                   ) : users.map((u) => (
-                    <tr key={u.id} className="hover:bg-slate-50/70 transition-colors group">
+                    <tr key={u.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/60 transition-colors group">
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-2.5">
                           <Avatar name={u.full_name} size="sm" />
-                          <span className="font-medium text-slate-900">{u.full_name}</span>
+                          <span className="font-medium text-slate-900 dark:text-slate-100">{u.full_name}</span>
                         </div>
                       </td>
-                      <td className="px-5 py-3.5 text-slate-500">{u.email}</td>
+                      <td className="px-5 py-3.5 text-slate-500 dark:text-slate-400">{u.email}</td>
                       <td className="px-5 py-3.5">
                         <div className="flex flex-wrap gap-1">
                           {u.roles.length > 0 ? u.roles.map((r) => <Badge key={r.id} variant="indigo">{r.name}</Badge>) : <span className="text-slate-300 text-xs">—</span>}
@@ -263,7 +293,7 @@ function CompanyDetailView({ company }: { company: Company }) {
                         <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity justify-end">
                           <button
                             onClick={() => openEditUser(u)}
-                            className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-brand-600 transition-colors"
+                            className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 hover:text-brand-600 transition-colors"
                             title="Редактировать"
                           >
                             <Edit2 size={14} />
@@ -277,7 +307,7 @@ function CompanyDetailView({ company }: { company: Company }) {
                           </button>
                           <button
                             onClick={() => setDeleteUserTarget(u)}
-                            className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors"
+                            className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-400 hover:text-red-500 transition-colors"
                             title="Удалить"
                           >
                             <Trash2 size={14} />
@@ -300,23 +330,23 @@ function CompanyDetailView({ company }: { company: Company }) {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-slate-100 bg-slate-50/60">
-                    <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Роль</th>
-                    <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Тип</th>
-                    <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Разрешения</th>
+                  <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40">
+                    <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Роль</th>
+                    <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Тип</th>
+                    <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Разрешения</th>
                     <th className="px-5 py-3 w-24" />
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-50">
+                <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
                   {(!roles || roles.length === 0) ? (
-                    <tr><td colSpan={4} className="px-5 py-12 text-center text-slate-400 text-sm">Нет ролей</td></tr>
+                    <tr><td colSpan={4} className="px-5 py-12 text-center text-slate-400 dark:text-slate-500 text-sm">Нет ролей</td></tr>
                   ) : roles.map((r) => (
-                    <tr key={r.id} className="hover:bg-slate-50/70 transition-colors group">
-                      <td className="px-5 py-3.5 font-medium text-slate-900">{r.name}</td>
+                    <tr key={r.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/60 transition-colors group">
+                      <td className="px-5 py-3.5 font-medium text-slate-900 dark:text-slate-100">{r.name}</td>
                       <td className="px-5 py-3.5">
                         {r.is_system ? <Badge variant="indigo">Системная</Badge> : <Badge variant="gray">Пользовательская</Badge>}
                       </td>
-                      <td className="px-5 py-3.5 text-xs text-slate-500">{r.permissions.map((p) => p.code).join(', ') || '—'}</td>
+                      <td className="px-5 py-3.5 text-xs text-slate-500 dark:text-slate-400">{r.permissions.map((p) => p.code).join(', ') || '—'}</td>
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity justify-end">
                           <button
@@ -353,25 +383,25 @@ function CompanyDetailView({ company }: { company: Company }) {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-slate-100 bg-slate-50/60">
-                    <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Сущность</th>
-                    <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Slug</th>
-                    <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Полей</th>
-                    <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Записей</th>
+                  <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40">
+                    <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Сущность</th>
+                    <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Slug</th>
+                    <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Полей</th>
+                    <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Записей</th>
                     <th className="px-5 py-3 w-36" />
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-50">
+                <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
                   {(!entities || entities.length === 0) ? (
-                    <tr><td colSpan={5} className="px-5 py-12 text-center text-slate-400 text-sm">Нет сущностей</td></tr>
+                    <tr><td colSpan={5} className="px-5 py-12 text-center text-slate-400 dark:text-slate-500 text-sm">Нет сущностей</td></tr>
                   ) : entities.map((e) => (
-                    <tr key={e.id} className="hover:bg-slate-50/70 transition-colors group">
+                    <tr key={e.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/60 transition-colors group">
                       <td className="px-5 py-3.5">
-                        <span className="font-medium text-slate-900">{e.icon} {e.name}</span>
+                        <span className="font-medium text-slate-900 dark:text-slate-100">{e.icon} {e.name}</span>
                       </td>
-                      <td className="px-5 py-3.5"><code className="text-xs text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">{e.slug}</code></td>
-                      <td className="px-5 py-3.5 text-slate-500">{e.fields?.length ?? 0}</td>
-                      <td className="px-5 py-3.5 text-slate-500">{(e as any).record_count ?? 0}</td>
+                      <td className="px-5 py-3.5"><code className="text-xs text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">{e.slug}</code></td>
+                      <td className="px-5 py-3.5 text-slate-500 dark:text-slate-400">{e.fields?.length ?? 0}</td>
+                      <td className="px-5 py-3.5 text-slate-500 dark:text-slate-400">{(e as any).record_count ?? 0}</td>
                       <td className="px-5 py-3.5">
                         <button
                           onClick={() => navigate(
@@ -396,7 +426,7 @@ function CompanyDetailView({ company }: { company: Company }) {
       {/* ── Info tab ── */}
       {ctab === 'info' && (
         <Card>
-          <CardHeader><p className="text-sm font-semibold text-slate-900">Информация о компании</p></CardHeader>
+          <CardHeader><p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Информация о компании</p></CardHeader>
           <CardBody>
             <div className="space-y-4 max-w-sm">
               <Input
@@ -405,12 +435,12 @@ function CompanyDetailView({ company }: { company: Company }) {
                 onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
               />
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Описание</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Описание</label>
                 <textarea
                   rows={3}
                   value={editForm.description}
                   onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
-                  className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent resize-none"
+                  className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent resize-none"
                 />
               </div>
               <div className="flex gap-2">
@@ -422,7 +452,7 @@ function CompanyDetailView({ company }: { company: Company }) {
                   Сохранить
                 </Button>
               </div>
-              <div className="pt-2 border-t border-slate-100 text-xs text-slate-500 space-y-1">
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400 space-y-1">
                 <p>Slug: <code className="bg-slate-100 px-1 rounded">{company.slug}</code></p>
                 <p>Создана: {format(new Date(company.created_at), 'dd MMMM yyyy', { locale: ru })}</p>
               </div>
@@ -657,34 +687,34 @@ function CompaniesTab({ companies, isLoading, onEnterCompany }: {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-100 bg-slate-50/60">
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Компания</th>
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Slug</th>
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Описание</th>
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Статус</th>
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Создана</th>
+                <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40">
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Компания</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Slug</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Описание</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Статус</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Создана</th>
                   <th className="px-5 py-3 w-32" />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
+              <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
                 {filtered.map((c) => (
                   <tr
                     key={c.id}
-                    className="hover:bg-indigo-50/50 transition-colors group cursor-pointer"
+                    className="hover:bg-indigo-50/50 dark:hover:bg-slate-800/60 transition-colors group cursor-pointer"
                     onClick={() => onEnterCompany(c)}
                   >
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center shrink-0">
-                          <Building2 size={14} className="text-indigo-600" />
+                        <div className="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center shrink-0">
+                          <Building2 size={14} className="text-indigo-600 dark:text-indigo-400" />
                         </div>
-                        <span className="font-medium text-slate-900 group-hover:text-brand-600 transition-colors">{c.name}</span>
+                        <span className="font-medium text-slate-900 dark:text-slate-100 group-hover:text-brand-600 transition-colors">{c.name}</span>
                       </div>
                     </td>
                     <td className="px-5 py-3.5">
-                      <code className="text-xs text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">{c.slug}</code>
+                      <code className="text-xs text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">{c.slug}</code>
                     </td>
-                    <td className="px-5 py-3.5 text-slate-500 max-w-xs truncate">{c.description ?? <span className="text-slate-300">—</span>}</td>
+                    <td className="px-5 py-3.5 text-slate-500 dark:text-slate-400 max-w-xs truncate">{c.description ?? <span className="text-slate-300 dark:text-slate-600">—</span>}</td>
                     <td className="px-5 py-3.5" onClick={(e) => e.stopPropagation()}>
                       <button
                         onClick={() => updateCompany.mutate({ id: c.id, data: { is_active: !c.is_active } })}
@@ -696,7 +726,7 @@ function CompaniesTab({ companies, isLoading, onEnterCompany }: {
                         </Badge>
                       </button>
                     </td>
-                    <td className="px-5 py-3.5 text-xs text-slate-400 whitespace-nowrap">
+                    <td className="px-5 py-3.5 text-xs text-slate-400 dark:text-slate-500 whitespace-nowrap">
                       {format(new Date(c.created_at), 'dd MMM yyyy', { locale: ru })}
                     </td>
                     <td className="px-5 py-3.5" onClick={(e) => e.stopPropagation()}>
@@ -827,11 +857,11 @@ function AccessTab({ companies, isLoading }: { companies: Company[]; isLoading: 
             { label: 'Истёкших', count: stats.expired, color: 'bg-red-500' },
             { label: 'Без ограничений', count: stats.unlimited, color: 'bg-slate-300' },
           ].map(s => (
-            <div key={s.label} className="flex items-center gap-3 p-4 rounded-xl border border-slate-200 bg-white">
+            <div key={s.label} className="flex items-center gap-3 p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
               <span className={`w-3 h-3 rounded-full shrink-0 ${s.color}`} />
               <div>
-                <p className="text-xl font-bold text-slate-900">{s.count}</p>
-                <p className="text-xs text-slate-500">{s.label}</p>
+                <p className="text-xl font-bold text-slate-900 dark:text-slate-100">{s.count}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{s.label}</p>
               </div>
             </div>
           ))}
@@ -867,27 +897,27 @@ function AccessTab({ companies, isLoading }: { companies: Company[]; isLoading: 
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-100 bg-slate-50/60">
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Компания</th>
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Статус</th>
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Срок доступа</th>
+                <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40">
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Компания</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Статус</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Срок доступа</th>
                   <th className="px-5 py-3 w-64" />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
+              <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
                 {filteredCompanies.map(company => {
                   const expStatus = getCompanyExpirationStatus(company.access_expires_at)
                   const isEditing = editingId === company.id
                   return (
-                    <tr key={company.id} className="hover:bg-slate-50/70 transition-colors group">
+                    <tr key={company.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/60 transition-colors group">
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center shrink-0">
-                            <Building2 size={14} className="text-indigo-600" />
+                          <div className="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center shrink-0">
+                            <Building2 size={14} className="text-indigo-600 dark:text-indigo-400" />
                           </div>
                           <div>
-                            <p className="font-medium text-slate-900">{company.name}</p>
-                            <p className="text-xs text-slate-400">{company.slug}</p>
+                            <p className="font-medium text-slate-900 dark:text-slate-100">{company.name}</p>
+                            <p className="text-xs text-slate-400 dark:text-slate-500">{company.slug}</p>
                           </div>
                         </div>
                       </td>
@@ -907,7 +937,7 @@ function AccessTab({ companies, isLoading }: { companies: Company[]; isLoading: 
                               value={dateValue}
                               min={todayString()}
                               onChange={e => setDateValue(e.target.value)}
-                              className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                              className="border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                             />
                             <Button size="sm" loading={updateAccess.isPending} disabled={!dateValue} onClick={() => handleSave(company.id)}>Сохранить</Button>
                             <Button size="sm" variant="ghost" disabled={updateAccess.isPending} onClick={() => setEditingId(null)}>Отмена</Button>
@@ -916,7 +946,7 @@ function AccessTab({ companies, isLoading }: { companies: Company[]; isLoading: 
                           <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button
                               onClick={() => handleEditClick(company)}
-                              className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-brand-600 transition-colors"
+                              className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 hover:text-brand-600 transition-colors"
                               title={company.access_expires_at ? 'Изменить срок' : 'Установить срок'}
                             >
                               <Edit2 size={14} />

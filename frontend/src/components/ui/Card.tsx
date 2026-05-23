@@ -31,7 +31,7 @@ export function CardHeader({
   className?: string
 }) {
   return (
-    <div className={cn('px-6 py-4 border-b border-slate-100', className)}>
+    <div className={cn('px-6 py-4 border-b border-slate-100 dark:border-slate-800', className)}>
       {children}
     </div>
   )
