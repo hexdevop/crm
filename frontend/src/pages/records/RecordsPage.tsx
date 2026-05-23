@@ -360,15 +360,28 @@ export default function RecordsPage() {
   )
   const highlightRef = useRef<HTMLTableRowElement>(null)
 
+  // Sync when navigating to the same page (component doesn't remount, only location changes)
   useEffect(() => {
-    if (!highlightId) return
-    if (highlightRef.current) {
-      highlightRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' })
-      window.history.replaceState({}, '', window.location.pathname)
-    }
+    const id = (location.state as any)?.highlightId as string | undefined
+    if (id) setHighlightId(id)
+  }, [location.state]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Scroll + highlight once records are in the DOM
+  useEffect(() => {
+    if (!highlightId || !records) return
+    // rAF ensures the browser has painted the rows before we try to scroll
+    const raf = requestAnimationFrame(() => {
+      if (highlightRef.current) {
+        highlightRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        window.history.replaceState({}, '', window.location.pathname)
+      }
+    })
     const timer = setTimeout(() => setHighlightId(undefined), 2500)
-    return () => clearTimeout(timer)
-  }, [highlightId, records?.items]) // eslint-disable-line react-hooks/exhaustive-deps
+    return () => {
+      cancelAnimationFrame(raf)
+      clearTimeout(timer)
+    }
+  }, [highlightId, records]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleCol = (slug: string) =>
     setHiddenCols((prev) => { const n = new Set(prev); n.has(slug) ? n.delete(slug) : n.add(slug); return n })
