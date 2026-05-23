@@ -44,6 +44,16 @@ const FIELD_TYPES: { type: FieldType; label: string; icon: string; desc: string 
 const COLORS = ['#6366f1','#8b5cf6','#ec4899','#ef4444','#f97316','#eab308','#22c55e','#06b6d4','#3b82f6','#64748b']
 const ICONS  = ['📋','👤','🏢','💼','📦','🎯','🔑','📊','💬','🗂️','🏷️','📌','⚡','🔔','💡']
 
+const FIELD_TYPE_COLORS: Record<string, string> = {
+  text: '#6366f1', email: '#6366f1', phone: '#6366f1', barcode: '#6366f1', url: '#6366f1',
+  number: '#22c55e', price: '#22c55e', quantity_unit: '#22c55e', formula: '#22c55e',
+  date: '#f97316', expiry_date: '#f97316',
+  select: '#3b82f6', status: '#3b82f6', boolean: '#3b82f6',
+  relation: '#8b5cf6',
+  image: '#06b6d4', file: '#06b6d4',
+  autoincrement: '#64748b', warehouse_location: '#64748b',
+}
+
 interface SelectOption { value: string; label: string }
 
 interface FieldDraft extends EntityFieldCreate {
@@ -337,6 +347,10 @@ function FormulaConfigEditor({ config, onChange, fields }: {
   const numericFields = fields.filter((f) =>
     ['number', 'price', 'quantity_unit'].includes(f.field_type)
   )
+  const prefix = String(config.prefix ?? '')
+  const suffix = String(config.suffix ?? '')
+  const previewNum = '1234.5'
+  const preview = `${prefix}${previewNum}${suffix}`
   return (
     <div className="mt-3 space-y-2">
       <div>
@@ -360,6 +374,29 @@ function FormulaConfigEditor({ config, onChange, fields }: {
             ))}
           </div>
         </div>
+      )}
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <label className="text-xs text-slate-500 mb-1 block">Префикс (перед числом)</label>
+          <input
+            className="text-xs border border-slate-200 rounded px-2 py-1.5 w-full bg-white focus:outline-none focus:ring-1 focus:ring-brand-500"
+            placeholder="например: $"
+            value={prefix}
+            onChange={(e) => onChange({ ...config, prefix: e.target.value })} />
+        </div>
+        <div>
+          <label className="text-xs text-slate-500 mb-1 block">Суффикс (после числа)</label>
+          <input
+            className="text-xs border border-slate-200 rounded px-2 py-1.5 w-full bg-white focus:outline-none focus:ring-1 focus:ring-brand-500"
+            placeholder="например: кг"
+            value={suffix}
+            onChange={(e) => onChange({ ...config, suffix: e.target.value })} />
+        </div>
+      </div>
+      {(prefix || suffix) && (
+        <p className="text-xs text-slate-500">
+          Пример результата: <code className="bg-blue-50 text-blue-700 px-1 rounded">{preview}</code>
+        </p>
       )}
       <p className="text-xs text-slate-400">Поддерживаются: +, −, ×, ÷, скобки. Значение пересчитывается при каждом сохранении.</p>
     </div>
@@ -462,114 +499,125 @@ function SortableField({ field, updateField, removeField, toggleExpand, currentE
   const numConfig: Record<string, unknown> = (field.config as any) ?? {}
   const hasConfig = FIELDS_WITH_CONFIG.has(field.field_type)
 
+  const typeColor = FIELD_TYPE_COLORS[field.field_type] ?? '#6366f1'
+
   return (
     <div ref={setNodeRef} style={style}
-      className={`bg-white border-b border-slate-100 last:border-b-0 ${isDragging ? 'shadow-lg rounded-xl ring-2 ring-brand-200' : ''}`}>
-      {/* Main row */}
-      <div className="p-4 flex items-start gap-3">
-        <div {...attributes} {...listeners}
-          className="mt-2 text-slate-300 cursor-grab active:cursor-grabbing hover:text-slate-500 shrink-0">
-          <GripVertical size={15} />
-        </div>
+      className={`rounded-xl overflow-hidden ${isDragging ? 'shadow-xl ring-2 ring-brand-200' : 'border border-slate-200 shadow-sm'}`}>
+      <div className="flex bg-white">
+        {/* Left color strip */}
+        <div className="w-1.5 shrink-0" style={{ background: typeColor }} />
+        <div className="flex-1 min-w-0">
+          {/* Main row */}
+          <div className="p-4 flex items-start gap-3">
+            <div {...attributes} {...listeners}
+              className="mt-2 text-slate-300 cursor-grab active:cursor-grabbing hover:text-slate-500 shrink-0">
+              <GripVertical size={15} />
+            </div>
 
-        <div className="flex-1 grid grid-cols-2 gap-3">
-          {/* Name */}
-          <Input label="Название поля" value={field.name}
-            onChange={(e) => updateField(field._id, { name: e.target.value, slug: slugifyField(e.target.value) })} />
-          {/* Type badge */}
-          <div>
-            <label className="label">Тип</label>
-            <div className="flex items-center gap-2 mt-1.5">
-              <span className="text-xl">{ft?.icon}</span>
-              <Badge variant="indigo" className="text-xs">{ft?.label}</Badge>
+            <div className="flex-1 grid grid-cols-2 gap-3">
+              {/* Name */}
+              <Input label="Название поля" value={field.name}
+                onChange={(e) => updateField(field._id, { name: e.target.value, slug: slugifyField(e.target.value) })} />
+              {/* Type badge */}
+              <div>
+                <label className="label">Тип</label>
+                <div className="flex items-center gap-2 mt-1.5">
+                  <span className="text-xl">{ft?.icon}</span>
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold text-white"
+                    style={{ background: typeColor }}>
+                    {ft?.label}
+                  </span>
+                </div>
+              </div>
+              {/* Slug */}
+              <div className="col-span-2">
+                <label className="label">Slug (ключ)</label>
+                <input className="input text-xs font-mono text-slate-500" value={field.slug}
+                  onChange={(e) => updateField(field._id, { slug: slugifyField(e.target.value) })} />
+              </div>
+              {/* Checkboxes */}
+              <div className="col-span-2 flex items-center gap-6">
+                <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer select-none">
+                  <input type="checkbox" checked={field.is_required}
+                    onChange={(e) => updateField(field._id, { is_required: e.target.checked })}
+                    className="accent-brand-600 w-3.5 h-3.5" />
+                  Обязательное поле
+                </label>
+                <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer select-none">
+                  <input type="checkbox" checked={field.is_searchable}
+                    onChange={(e) => updateField(field._id, { is_searchable: e.target.checked })}
+                    className="accent-brand-600 w-3.5 h-3.5" />
+                  Участвует в поиске
+                </label>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1 shrink-0 mt-1">
+              {hasConfig && (
+                <button type="button" onClick={() => toggleExpand(field._id)}
+                  className={`p-1.5 rounded-lg transition-colors ${field._expanded
+                    ? 'text-brand-600 bg-brand-50'
+                    : 'text-slate-400 hover:text-brand-600 hover:bg-brand-50'}`}
+                  title={field._expanded ? 'Скрыть настройки' : 'Настройки'}>
+                  {field._expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                </button>
+              )}
+              <button type="button" onClick={() => removeField(field._id)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                title="Удалить поле">
+                <Trash2 size={14} />
+              </button>
             </div>
           </div>
-          {/* Slug */}
-          <div className="col-span-2">
-            <label className="label">Slug (ключ)</label>
-            <input className="input text-xs font-mono text-slate-500" value={field.slug}
-              onChange={(e) => updateField(field._id, { slug: slugifyField(e.target.value) })} />
-          </div>
-          {/* Checkboxes */}
-          <div className="col-span-2 flex items-center gap-6">
-            <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer select-none">
-              <input type="checkbox" checked={field.is_required}
-                onChange={(e) => updateField(field._id, { is_required: e.target.checked })}
-                className="accent-brand-600 w-3.5 h-3.5" />
-              Обязательное поле
-            </label>
-            <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer select-none">
-              <input type="checkbox" checked={field.is_searchable}
-                onChange={(e) => updateField(field._id, { is_searchable: e.target.checked })}
-                className="accent-brand-600 w-3.5 h-3.5" />
-              Участвует в поиске
-            </label>
-          </div>
-        </div>
 
-        <div className="flex flex-col gap-1 shrink-0 mt-1">
-          {hasConfig && (
-            <button type="button" onClick={() => toggleExpand(field._id)}
-              className={`p-1.5 rounded-lg transition-colors ${field._expanded
-                ? 'text-brand-600 bg-brand-50'
-                : 'text-slate-400 hover:text-brand-600 hover:bg-brand-50'}`}
-              title={field._expanded ? 'Скрыть настройки' : 'Настройки'}>
-              {field._expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-            </button>
+          {/* Config panel */}
+          {field._expanded && hasConfig && (
+            <div className="px-12 pb-4 pt-1 bg-gradient-to-b from-slate-50 to-white border-t border-slate-100">
+              {field.field_type === 'select' && (
+                <SelectOptionsEditor options={options}
+                  onChange={(opts) => updateField(field._id, { config: { ...field.config, options: opts } })} />
+              )}
+              {field.field_type === 'number' && (
+                <NumberConfigEditor config={numConfig}
+                  onChange={(c) => updateField(field._id, { config: c })} />
+              )}
+              {field.field_type === 'expiry_date' && (
+                <ExpiryConfigEditor config={numConfig}
+                  onChange={(c) => updateField(field._id, { config: c })} />
+              )}
+              {field.field_type === 'quantity_unit' && (
+                <QuantityUnitConfigEditor config={numConfig}
+                  onChange={(c) => updateField(field._id, { config: c })} />
+              )}
+              {field.field_type === 'relation' && (
+                <RelationConfigEditor config={numConfig} currentEntityId={currentEntityId}
+                  onChange={(c) => updateField(field._id, { config: c })} />
+              )}
+              {field.field_type === 'price' && (
+                <PriceConfigEditor config={numConfig}
+                  onChange={(c) => updateField(field._id, { config: c })} />
+              )}
+              {field.field_type === 'autoincrement' && (
+                <AutoincrementConfigEditor config={numConfig}
+                  onChange={(c) => updateField(field._id, { config: c })} />
+              )}
+              {field.field_type === 'formula' && (
+                <FormulaConfigEditor config={numConfig} fields={allFields.filter((f) => f._id !== field._id)}
+                  onChange={(c) => updateField(field._id, { config: c })} />
+              )}
+              {field.field_type === 'status' && (
+                <StatusOptionsEditor options={(field.config as any)?.options ?? []}
+                  onChange={(opts) => updateField(field._id, { config: { ...field.config, options: opts } })} />
+              )}
+              {field.field_type === 'warehouse_location' && (
+                <WarehouseConfigEditor config={numConfig}
+                  onChange={(c) => updateField(field._id, { config: c })} />
+              )}
+            </div>
           )}
-          <button type="button" onClick={() => removeField(field._id)}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
-            title="Удалить поле">
-            <Trash2 size={14} />
-          </button>
         </div>
       </div>
-
-      {/* Config panel */}
-      {field._expanded && hasConfig && (
-        <div className="px-12 pb-4 pt-1 bg-gradient-to-b from-slate-50 to-white border-t border-slate-100">
-          {field.field_type === 'select' && (
-            <SelectOptionsEditor options={options}
-              onChange={(opts) => updateField(field._id, { config: { ...field.config, options: opts } })} />
-          )}
-          {field.field_type === 'number' && (
-            <NumberConfigEditor config={numConfig}
-              onChange={(c) => updateField(field._id, { config: c })} />
-          )}
-          {field.field_type === 'expiry_date' && (
-            <ExpiryConfigEditor config={numConfig}
-              onChange={(c) => updateField(field._id, { config: c })} />
-          )}
-          {field.field_type === 'quantity_unit' && (
-            <QuantityUnitConfigEditor config={numConfig}
-              onChange={(c) => updateField(field._id, { config: c })} />
-          )}
-          {field.field_type === 'relation' && (
-            <RelationConfigEditor config={numConfig} currentEntityId={currentEntityId}
-              onChange={(c) => updateField(field._id, { config: c })} />
-          )}
-          {field.field_type === 'price' && (
-            <PriceConfigEditor config={numConfig}
-              onChange={(c) => updateField(field._id, { config: c })} />
-          )}
-          {field.field_type === 'autoincrement' && (
-            <AutoincrementConfigEditor config={numConfig}
-              onChange={(c) => updateField(field._id, { config: c })} />
-          )}
-          {field.field_type === 'formula' && (
-            <FormulaConfigEditor config={numConfig} fields={allFields.filter((f) => f._id !== field._id)}
-              onChange={(c) => updateField(field._id, { config: c })} />
-          )}
-          {field.field_type === 'status' && (
-            <StatusOptionsEditor options={(field.config as any)?.options ?? []}
-              onChange={(opts) => updateField(field._id, { config: { ...field.config, options: opts } })} />
-          )}
-          {field.field_type === 'warehouse_location' && (
-            <WarehouseConfigEditor config={numConfig}
-              onChange={(c) => updateField(field._id, { config: c })} />
-          )}
-        </div>
-      )}
     </div>
   )
 }
@@ -791,12 +839,14 @@ export default function EntityBuilderPage() {
           ) : (
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
               <SortableContext items={fields.map((f) => f._id)} strategy={verticalListSortingStrategy}>
-                {fields.map((field) => (
-                  <SortableField key={field._id} field={field}
-                    updateField={updateField} removeField={removeField}
-                    toggleExpand={toggleExpand} currentEntityId={id}
-                    allFields={fields} />
-                ))}
+                <div className="p-3 space-y-2">
+                  {fields.map((field) => (
+                    <SortableField key={field._id} field={field}
+                      updateField={updateField} removeField={removeField}
+                      toggleExpand={toggleExpand} currentEntityId={id}
+                      allFields={fields} />
+                  ))}
+                </div>
               </SortableContext>
             </DndContext>
           )}

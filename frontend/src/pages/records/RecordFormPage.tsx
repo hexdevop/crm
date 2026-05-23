@@ -39,6 +39,7 @@ function RelationPicker({
 }) {
   const relEntityId = (field.config as any)?.entity_id as string | undefined
   const displayField = (field.config as any)?.display_field as string | undefined
+  const navigate = useNavigate()
 
   const { data: records } = useQuery({
     queryKey: ['records', relEntityId],
@@ -46,29 +47,57 @@ function RelationPicker({
     enabled: !!relEntityId,
   })
 
+  const selectedRecord = records?.items.find((r) => r.id === String(value ?? ''))
+  const selectedLabel = selectedRecord
+    ? displayField
+      ? String(selectedRecord.data[displayField] ?? '—')
+      : `#${String(value).slice(0, 8)}`
+    : null
+
   return (
     <div>
       <label className="label">
         {field.name}
         {field.is_required && <span className="text-red-500 ml-0.5">*</span>}
       </label>
-      <select
-        value={String(value ?? '')}
-        onChange={(e) => onChange(e.target.value || null)}
-        className="input"
-      >
-        <option value="">— выберите —</option>
-        {records?.items.map((r) => {
-          const label = displayField
-            ? String(r.data[displayField] ?? r.id.slice(0, 8))
-            : r.id.slice(0, 8)
-          return (
-            <option key={r.id} value={r.id}>
-              {label}
-            </option>
-          )
-        })}
-      </select>
+      <div className="flex gap-2">
+        <select
+          value={String(value ?? '')}
+          onChange={(e) => onChange(e.target.value || null)}
+          className="input flex-1"
+        >
+          <option value="">— выберите —</option>
+          {records?.items.map((r) => {
+            const label = displayField
+              ? String(r.data[displayField] ?? r.id.slice(0, 8))
+              : r.id.slice(0, 8)
+            return (
+              <option key={r.id} value={r.id}>
+                {label}
+              </option>
+            )
+          })}
+        </select>
+        {!!value && relEntityId && (
+          <button
+            type="button"
+            onClick={() =>
+              navigate(`/entities/${relEntityId}/records`, {
+                state: { highlightId: String(value) },
+              })
+            }
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-violet-200 bg-violet-50 text-violet-600 hover:bg-violet-100 transition-colors text-sm shrink-0"
+            title="Открыть связанную запись">
+            🔗 Открыть
+          </button>
+        )}
+      </div>
+      {selectedLabel && (
+        <p className="mt-1.5 flex items-center gap-1.5 text-xs text-violet-600">
+          <span>✓ Выбрано:</span>
+          <span className="font-semibold">{selectedLabel}</span>
+        </p>
+      )}
     </div>
   )
 }

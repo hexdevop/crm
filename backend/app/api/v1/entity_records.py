@@ -24,7 +24,7 @@ async def list_records(
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user=Depends(require_permission("read")),
     page: int = Query(default=1, ge=1),
-    size: int = Query(default=25, ge=1, le=100),
+    size: int = Query(default=25, ge=1, le=500),
     search: str | None = Query(default=None),
     sort: str | None = Query(default=None),
     order: str = Query(default="desc", pattern="^(asc|desc)$"),

@@ -1,10 +1,12 @@
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import {
   Plus, Search, Trash2, Edit2, ChevronLeft, ChevronRight,
   ArrowLeft, SlidersHorizontal, Package, Filter, X, Check,
 } from 'lucide-react'
 import { cn } from '@/utils/cn'
+import { useQuery } from '@tanstack/react-query'
+import { entitiesApi } from '@/api/entities'
 import { useEntity, useEntityRecords, useDeleteRecord } from '@/hooks/useEntities'
 import PageHeader from '@/components/ui/PageHeader'
 import Button from '@/components/ui/Button'
@@ -18,7 +20,55 @@ import { format, differenceInDays } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import type { EntityRecord, EntityField } from '@/types/entity'
 
-function formatValue(field: EntityField, value: unknown): React.ReactNode {
+// ─── RelationCell ─────────────────────────────────────────────────────────────
+function RelationCell({
+  field,
+  value,
+  navigate,
+}: {
+  field: EntityField
+  value: string
+  navigate: ReturnType<typeof useNavigate>
+}) {
+  const relEntityId = (field.config as any)?.entity_id as string | undefined
+  const displayField = (field.config as any)?.display_field as string | undefined
+
+  const { data: records } = useQuery({
+    queryKey: ['records', relEntityId],
+    queryFn: () => entitiesApi.listRecords(relEntityId!, { size: 200 }),
+    enabled: !!relEntityId,
+    staleTime: 30_000,
+  })
+
+  const relRecord = records?.items.find((r) => r.id === value)
+  const label = relRecord
+    ? displayField
+      ? String(relRecord.data[displayField] ?? value.slice(0, 8))
+      : value.slice(0, 8)
+    : value.slice(0, 8) + '…'
+
+  if (!relEntityId) {
+    return <span className="text-xs font-mono text-slate-400">{value.slice(0, 8)}…</span>
+  }
+
+  return (
+    <button
+      onClick={(e) => {
+        e.stopPropagation()
+        navigate(`/entities/${relEntityId}/records`, { state: { highlightId: value } })
+      }}
+      className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800 text-violet-700 dark:text-violet-300 hover:bg-violet-100 dark:hover:bg-violet-900/40 transition-colors text-xs"
+      title="Открыть связанную запись">
+      🔗 {label}
+    </button>
+  )
+}
+
+function formatValue(
+  field: EntityField,
+  value: unknown,
+  navigate: ReturnType<typeof useNavigate>,
+): React.ReactNode {
   if (value === null || value === undefined || value === '')
     return <span className="text-slate-300 dark:text-slate-600">—</span>
 
@@ -59,7 +109,8 @@ function formatValue(field: EntityField, value: unknown): React.ReactNode {
     case 'barcode':
       return <code className="text-xs font-mono bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">{String(value)}</code>
     case 'relation':
-      return <span className="text-xs font-mono text-slate-500">{String(value).slice(0, 8)}…</span>
+      // Handled by <RelationCell> directly in the table to allow hook usage
+      return <span className="text-xs font-mono text-slate-400">{String(value).slice(0, 8)}…</span>
     case 'email':
       return <a href={`mailto:${value}`} className="text-brand-600 hover:underline" onClick={(e) => e.stopPropagation()}>{String(value)}</a>
     case 'phone':
@@ -75,10 +126,11 @@ function formatValue(field: EntityField, value: unknown): React.ReactNode {
     case 'autoincrement':
       return <code className="text-xs font-mono bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 px-2 py-0.5 rounded-md">{String(value)}</code>
     case 'formula': {
-      const num = parseFloat(String(value))
-      return isNaN(num)
-        ? <span className="text-slate-700 dark:text-slate-300">{String(value)}</span>
-        : <span className="font-semibold text-slate-800 dark:text-slate-200">{num.toLocaleString('ru-RU', { maximumFractionDigits: 4 })}</span>
+      // Backend stores float when no prefix/suffix, string when affixes applied
+      if (typeof value === 'number') {
+        return <span className="font-semibold text-slate-800 dark:text-slate-200">{value.toLocaleString('ru-RU', { maximumFractionDigits: 4 })}</span>
+      }
+      return <span className="font-semibold text-slate-800 dark:text-slate-200">{String(value)}</span>
     }
     case 'warehouse_location':
       return (
@@ -303,6 +355,21 @@ export default function RecordsPage() {
   })
   const deleteRecord = useDeleteRecord()
 
+  const [highlightId, setHighlightId] = useState<string | undefined>(
+    (location.state as any)?.highlightId as string | undefined
+  )
+  const highlightRef = useRef<HTMLTableRowElement>(null)
+
+  useEffect(() => {
+    if (!highlightId) return
+    if (highlightRef.current) {
+      highlightRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      window.history.replaceState({}, '', window.location.pathname)
+    }
+    const timer = setTimeout(() => setHighlightId(undefined), 2500)
+    return () => clearTimeout(timer)
+  }, [highlightId, records?.items]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const toggleCol = (slug: string) =>
     setHiddenCols((prev) => { const n = new Set(prev); n.has(slug) ? n.delete(slug) : n.add(slug); return n })
 
@@ -459,14 +526,25 @@ export default function RecordsPage() {
                 <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
                   {records.items.map((record, idx) => (
                     <tr key={record.id}
-                      className="hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors group cursor-pointer"
+                      ref={record.id === highlightId ? highlightRef : undefined}
+                      className={cn(
+                        'transition-all duration-700 group cursor-pointer',
+                        record.id === highlightId
+                          ? 'bg-amber-50 dark:bg-amber-900/20 outline outline-2 outline-amber-300 dark:outline-amber-700'
+                          : 'hover:bg-slate-50 dark:hover:bg-slate-800/60'
+                      )}
                       onClick={() => navigate(`${location.pathname}/${record.id}/edit`, { state: { backUrl: location.pathname } })}>
                       <td className="px-4 py-3.5 text-xs text-slate-400 font-mono">
                         {(page - 1) * 25 + idx + 1}
                       </td>
                       {visibleFields.map((f) => (
                         <td key={f.id} className="px-4 py-3.5 max-w-[200px]">
-                          <div className="truncate">{formatValue(f, record.data[f.slug])}</div>
+                          <div className="truncate">
+                            {f.field_type === 'relation' && record.data[f.slug]
+                              ? <RelationCell field={f} value={String(record.data[f.slug])} navigate={navigate} />
+                              : formatValue(f, record.data[f.slug], navigate)
+                            }
+                          </div>
                         </td>
                       ))}
                       <td className="px-4 py-3.5 text-slate-400 text-xs whitespace-nowrap">

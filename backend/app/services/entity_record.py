@@ -153,7 +153,18 @@ class EntityRecordService:
             expr = str(config.get("formula", "")).strip()
             if expr:
                 try:
-                    result[field.slug] = self._eval_formula(expr, result)
+                    val = self._eval_formula(expr, result)
+                    if val is None:
+                        result[field.slug] = None
+                    else:
+                        prefix = str(config.get("prefix", ""))
+                        suffix = str(config.get("suffix", ""))
+                        if prefix or suffix:
+                            # Format: remove trailing zeros (e.g. 1.0 → "1", 1.5 → "1.5")
+                            formatted = f"{val:g}"
+                            result[field.slug] = f"{prefix}{formatted}{suffix}"
+                        else:
+                            result[field.slug] = val
                 except Exception:
                     result[field.slug] = None
         return result
