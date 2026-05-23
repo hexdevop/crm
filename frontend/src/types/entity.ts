@@ -11,6 +11,7 @@ export type FieldType =
   | 'warehouse_location'  // адрес ячейки на складе
   | 'file'                // файл / документ
   | 'status'              // статус с цветом
+  | 'url'                 // ссылка / URL
 
 export interface EntityField {
   id: string

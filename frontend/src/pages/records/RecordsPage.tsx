@@ -106,10 +106,21 @@ function formatValue(field: EntityField, value: unknown): React.ReactNode {
       const url = String(value)
       const name = decodeURIComponent(url.split('/').pop() ?? 'файл')
       return (
-        <a href={url} target="_blank" rel="noreferrer"
+        <a href={url} download={name}
           className="flex items-center gap-1 text-xs text-brand-600 hover:underline"
           onClick={(e) => e.stopPropagation()}>
           📎 {name.length > 20 ? name.slice(0, 20) + '…' : name}
+        </a>
+      )
+    }
+    case 'url': {
+      const href = String(value)
+      const display = href.replace(/^https?:\/\//, '').slice(0, 30)
+      return (
+        <a href={href} target="_blank" rel="noreferrer"
+          className="flex items-center gap-1 text-xs text-brand-600 hover:underline"
+          onClick={(e) => e.stopPropagation()}>
+          🌐 {display}{href.replace(/^https?:\/\//, '').length > 30 ? '…' : ''}
         </a>
       )
     }

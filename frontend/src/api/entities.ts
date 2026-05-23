@@ -55,12 +55,20 @@ export const entitiesApi = {
   uploadImage: (file: File) => {
     const form = new FormData()
     form.append('file', file)
-    return apiClient.post<{ url: string; original_name: string; size: number }>('/uploads/image', form).then((r) => r.data)
+    return apiClient
+      .post<{ url: string; original_name: string; size: number }>('/uploads/image', form, {
+        headers: { 'Content-Type': undefined },
+      })
+      .then((r) => r.data)
   },
 
   uploadFile: (file: File) => {
     const form = new FormData()
     form.append('file', file)
-    return apiClient.post<{ url: string; original_name: string; size: number }>('/uploads/file', form).then((r) => r.data)
+    return apiClient
+      .post<{ url: string; original_name: string; size: number }>('/uploads/file', form, {
+        headers: { 'Content-Type': undefined },
+      })
+      .then((r) => r.data)
   },
 }

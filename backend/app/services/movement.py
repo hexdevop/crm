@@ -46,12 +46,13 @@ class MovementService:
         data = await self.repo.get_balance(record_id)
         return MovementBalance(**data)
 
-    async def delete_movement(self, movement_id: uuid.UUID, current_user_id: uuid.UUID) -> None:
+    async def delete_movement(
+        self, movement_id: uuid.UUID, current_user_id: uuid.UUID, bypass_creator_check: bool = False
+    ) -> None:
         movement = await self.repo.get_by_id(movement_id)
         if not movement:
             raise NotFoundException("Movement")
-        # Only the creator or manage_users can delete
-        if movement.performed_by and movement.performed_by != current_user_id:
+        if not bypass_creator_check and movement.performed_by and movement.performed_by != current_user_id:
             raise ForbiddenException("Cannot delete another user's movement")
         await self.repo.delete(movement)
         await self.db.commit()

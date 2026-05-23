@@ -1,7 +1,8 @@
 # ============================================================
-#  PROD compose — optimized builds, no source mounts, nginx + Let's Encrypt
-#  Usage: docker compose -f docker-compose.prod.yml up --build -d
-#  First-time SSL setup: see deploy.sh
+#  PROD compose — для сервера с существующим nginx на хосте
+#  Backend и Frontend экспонируются только на localhost.
+#  Хостовый nginx проксирует трафик и управляет SSL.
+#  Usage: docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
 # ============================================================
 services:
   postgres:
@@ -65,16 +66,19 @@ services:
       BOT_TOKEN: ${BOT_TOKEN:-}
       WEBHOOK_URL: ${WEBHOOK_URL:-}
       INTERNAL_BOT_TOKEN: ${INTERNAL_BOT_TOKEN:?INTERNAL_BOT_TOKEN is required}
-      CORS_ORIGINS: ${CORS_ORIGINS:-'["https://crm.llve.ru"]'}
-      SUPERADMIN_EMAIL: ${SUPERADMIN_EMAIL:-admin@crm.llve.ru}
+      CORS_ORIGINS: ${CORS_ORIGINS:-'["https://example.com"]'}
+      SUPERADMIN_EMAIL: ${SUPERADMIN_EMAIL:-admin@example.com}
       SUPERADMIN_PASSWORD: ${SUPERADMIN_PASSWORD:?SUPERADMIN_PASSWORD is required}
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
-    expose:
-      - "8000"
+    volumes:
+      - uploads_data:/app/uploads
+    ports:
+      # Доступен только с localhost — хостовый nginx проксирует сюда
+      - "127.0.0.1:8000:8000"
     restart: always
     deploy:
       resources:
@@ -94,8 +98,9 @@ services:
       args:
         VITE_API_URL: /api
     container_name: crm_frontend
-    expose:
-      - "80"
+    ports:
+      # Доступен только с localhost — хостовый nginx проксирует сюда
+      - "127.0.0.1:3000:80"
     depends_on:
       - backend
     restart: always
@@ -103,34 +108,6 @@ services:
       resources:
         limits:
           memory: 128m
-
-  nginx:
-    image: nginx:1.25-alpine
-    container_name: crm_nginx
-    volumes:
-      - ./nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
-      - letsencrypt:/etc/letsencrypt:ro
-      - certbot_www:/var/www/certbot:ro
-    ports:
-      - "80:80"
-      - "443:443"
-    depends_on:
-      - backend
-      - frontend
-    restart: always
-    deploy:
-      resources:
-        limits:
-          memory: 64m
-
-  certbot:
-    image: certbot/certbot:latest
-    container_name: crm_certbot
-    volumes:
-      - letsencrypt:/etc/letsencrypt
-      - certbot_www:/var/www/certbot
-    entrypoint: /bin/sh -c "trap exit TERM; while :; do certbot renew --quiet; sleep 12h & wait $${!}; done"
-    restart: always
 
   bot:
     build:
@@ -158,5 +135,4 @@ services:
 volumes:
   postgres_prod_data:
   redis_prod_data:
-  letsencrypt:
-  certbot_www:
+  uploads_data:

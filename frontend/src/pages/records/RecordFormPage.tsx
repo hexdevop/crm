@@ -153,7 +153,7 @@ function FileUploader({ field, value, onChange }: {
       {fileUrl ? (
         <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
           <FileText size={16} className="text-slate-400 shrink-0" />
-          <a href={fileUrl} target="_blank" rel="noreferrer"
+          <a href={fileUrl} download={fileName}
             className="flex-1 text-sm text-brand-600 hover:underline truncate">{fileName}</a>
           <button type="button" onClick={() => onChange('')}
             className="text-slate-400 hover:text-red-500 shrink-0"><X size={14} /></button>
@@ -463,6 +463,28 @@ function FieldInput({
 
     case 'file':
       return <FileUploader field={field} value={value} onChange={onChange} />
+
+    case 'url':
+      return (
+        <div>
+          <label className="label">
+            {field.name}
+            {field.is_required && <span className="text-red-500 ml-0.5">*</span>}
+          </label>
+          <div className="flex items-center gap-0">
+            <span className="inline-flex items-center px-3 h-10 bg-slate-100 border border-r-0 border-slate-200 rounded-l-xl text-base shrink-0">
+              🌐
+            </span>
+            <input
+              type="url"
+              className="input rounded-l-none flex-1"
+              placeholder="https://example.com"
+              value={String(value ?? '')}
+              onChange={(e) => onChange(e.target.value)}
+            />
+          </div>
+        </div>
+      )
 
     default:
       return (

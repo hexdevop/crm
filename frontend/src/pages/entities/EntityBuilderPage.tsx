@@ -38,6 +38,7 @@ const FIELD_TYPES: { type: FieldType; label: string; icon: string; desc: string 
   { type: 'warehouse_location', label: 'Ячейка на складе',  icon: '📍', desc: 'Адрес хранения: Стеллаж-Полка-Ячейка' },
   { type: 'barcode',            label: 'Штрихкод / QR',     icon: '🔲', desc: 'Штрихкод или QR-код товара' },
   { type: 'relation',           label: 'Связь',              icon: '🔗', desc: 'Ссылка на запись другой сущности' },
+  { type: 'url',               label: 'Ссылка / URL',       icon: '🌐', desc: 'Веб-адрес, гиперссылка' },
 ]
 
 const COLORS = ['#6366f1','#8b5cf6','#ec4899','#ef4444','#f97316','#eab308','#22c55e','#06b6d4','#3b82f6','#64748b']

@@ -1,6 +1,6 @@
 # Universal CRM — Руководство по установке и развёртыванию
 
-Это руководство охватывает четыре сценария: быстрый запуск в режиме разработки, развёртывание на сервер с существующим nginx, развёртывание на чистый сервер и ручная установка без Docker.
+Это руководство охватывает три сценария: быстрый запуск в режиме разработки, развёртывание на сервер с существующим nginx и ручная установка без Docker.
 
 ---
 
@@ -8,13 +8,12 @@
 
 1. [Требования](#требования)
 2. [Режим разработки (DEV)](#режим-разработки-dev)
-3. [Деплой на сервер с существующим Nginx](#деплой-на-сервер-с-существующим-nginx)
-4. [Режим продакшн (PROD — чистый сервер)](#режим-продакшн-prod--чистый-сервер)
-5. [Ручная установка (без Docker)](#ручная-установка-без-docker)
-6. [Telegram-бот](#telegram-бот)
-7. [Управление базой данных](#управление-базой-данных)
-8. [Часто задаваемые вопросы](#часто-задаваемые-вопросы)
-9. [Структура проекта](#структура-проекта)
+3. [Деплой на сервер (PROD)](#деплой-на-сервер-prod)
+4. [Ручная установка (без Docker)](#ручная-установка-без-docker)
+5. [Telegram-бот](#telegram-бот)
+6. [Управление базой данных](#управление-базой-данных)
+7. [Часто задаваемые вопросы](#часто-задаваемые-вопросы)
+8. [Структура проекта](#структура-проекта)
 
 ---
 
@@ -121,11 +120,10 @@ docker compose -f docker-compose.dev.yml up --build
 
 ---
 
-## Деплой на сервер с существующим Nginx
+## Деплой на сервер (PROD)
 
-Этот сценарий применяется когда на сервере уже запущен nginx (обслуживает другие сайты). Docker не поднимает собственный nginx — вместо этого backend и frontend доступны только на `127.0.0.1`, а хостовый nginx принимает внешний трафик и проксирует его.
+Продакшн-конфигурация (`docker-compose.prod.yml`) предназначена для сервера с уже запущенным nginx. Docker не поднимает собственный nginx — вместо этого backend и frontend доступны только на `127.0.0.1`, а хостовый nginx принимает внешний трафик и управляет SSL.
 
-**Домен:** `crm.llve.ru` → IP `89.223.64.97`  
 **Путь проекта на сервере:** `/home/crm`
 
 ### Архитектура
@@ -152,7 +150,7 @@ Docker-сеть (только внутри сервера):
 Подключитесь к серверу и убедитесь, что Docker установлен:
 
 ```bash
-ssh root@89.223.64.97
+ssh root@your-server-ip
 
 # Проверка Docker
 docker --version && docker compose version
@@ -186,7 +184,7 @@ rsync -avz \
   --exclude='frontend/node_modules' \
   --exclude='venv' \
   --exclude='.venv' \
-  /e/crm/ root@89.223.64.97:/home/crm/
+  /path/to/local/crm/ root@your-server-ip:/home/crm/
 ```
 
 ---
@@ -209,25 +207,25 @@ python3 -c "import secrets; print(secrets.token_hex(32))"
 Заполненный `.env.prod` должен выглядеть так:
 
 ```dotenv
-SECRET_KEY=a3f8c2e1d9b47f6a2c8e3d1b9f4e7a2c8d3f1b9e4a7c2d8f3b1e9a4c7d2f8b3
+SECRET_KEY=замените-на-случайную-строку-минимум-32-символа
 ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=15
 REFRESH_TOKEN_EXPIRE_DAYS=7
 
 POSTGRES_USER=crm
-POSTGRES_PASSWORD=MyStr0ngDbP@ss2024
+POSTGRES_PASSWORD=ваш_надёжный_пароль_postgres
 POSTGRES_DB=crm_db
 
-REDIS_PASSWORD=R3disStr0ngP@ss2024
+REDIS_PASSWORD=ваш_надёжный_пароль_redis
 
-BOT_TOKEN=6689906797:AAHQNAkJRcq-WF958iorvzxHPBPmjCA3RhM
-WEBHOOK_URL=https://crm.llve.ru/api/v1/telegram/webhook
-INTERNAL_BOT_TOKEN=f2b9e4a7c1d3f8b6e2a9c4d7f1b3e8a6c2d4f9b1e7a3c6d8f2b4e1a9c7d3f6b8
+BOT_TOKEN=токен_от_BotFather
+WEBHOOK_URL=https://example.com/api/v1/telegram/webhook
+INTERNAL_BOT_TOKEN=случайная-строка-для-внутр-апи
 
-CORS_ORIGINS=["https://crm.llve.ru"]
+CORS_ORIGINS=["https://example.com"]
 
-SUPERADMIN_EMAIL=admin@crm.llve.ru
-SUPERADMIN_PASSWORD=Admin@Pr0d2024!
+SUPERADMIN_EMAIL=admin@example.com
+SUPERADMIN_PASSWORD=ВашНадёжныйПароль123!
 ```
 
 ---
@@ -238,13 +236,13 @@ SUPERADMIN_PASSWORD=Admin@Pr0d2024!
 cd /home/crm
 
 # Собрать все образы
-docker compose -f docker-compose.host-nginx.yml --env-file .env.prod build --parallel
+docker compose -f docker-compose.prod.yml --env-file .env.prod build --parallel
 
 # Запустить в фоне
-docker compose -f docker-compose.host-nginx.yml --env-file .env.prod up -d
+docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
 
 # Проверить статус (все должны быть healthy)
-docker compose -f docker-compose.host-nginx.yml --env-file .env.prod ps
+docker compose -f docker-compose.prod.yml --env-file .env.prod ps
 ```
 
 Дождитесь пока backend пройдёт healthcheck (около 30–60 секунд):
@@ -276,128 +274,47 @@ certbot --version
 mkdir -p /var/www/certbot
 
 # Получить сертификат через webroot
-# (nginx должен отдавать /.well-known/acme-challenge/ — настроим в следующем шаге)
 certbot certonly \
   --webroot \
   --webroot-path /var/www/certbot \
-  --email abduraxmonislomov@gmail.com \
+  --email your@email.com \
   --agree-tos \
   --no-eff-email \
-  -d crm.llve.ru
+  -d example.com
 ```
 
 > Если домен ещё не настроен или DNS не успел обновиться, используйте standalone:
 > ```bash
-> # Временно освобождает порт 80 (nginx нужно остановить только для этой команды)
 > systemctl stop nginx
-> certbot certonly --standalone -d crm.llve.ru --email abduraxmonislomov@gmail.com --agree-tos --no-eff-email
+> certbot certonly --standalone -d example.com --email your@email.com --agree-tos --no-eff-email
 > systemctl start nginx
 > ```
 
 Сертификаты появятся в:
 
 ```
-/etc/letsencrypt/live/crm.llve.ru/fullchain.pem
-/etc/letsencrypt/live/crm.llve.ru/privkey.pem
+/etc/letsencrypt/live/example.com/fullchain.pem
+/etc/letsencrypt/live/example.com/privkey.pem
 ```
 
 ---
 
 ### Шаг 6 — Настроить хостовый Nginx
 
-Создать конфигурационный файл для сайта:
+Готовый конфиг находится в `nginx/nginx.prod.conf`. Скопировать на сервер:
 
 ```bash
-nano /etc/nginx/sites-available/crm.llve.ru
-```
-
-Вставить следующее содержимое:
-
-```nginx
-# /etc/nginx/sites-available/crm.llve.ru
-
-# Rate limiting zones
-limit_req_zone $binary_remote_addr zone=crm_api:10m rate=30r/s;
-limit_req_zone $binary_remote_addr zone=crm_auth:10m rate=5r/m;
-
-# HTTP → HTTPS redirect + Let's Encrypt challenge
-server {
-    listen 80;
-    server_name crm.llve.ru;
-
-    location /.well-known/acme-challenge/ {
-        root /var/www/certbot;
-    }
-
-    location / {
-        return 301 https://$host$request_uri;
-    }
-}
-
-# HTTPS
-server {
-    listen 443 ssl;
-    server_name crm.llve.ru;
-
-    ssl_certificate     /etc/letsencrypt/live/crm.llve.ru/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/crm.llve.ru/privkey.pem;
-    ssl_protocols       TLSv1.2 TLSv1.3;
-    ssl_ciphers         HIGH:!aNULL:!MD5;
-    ssl_session_cache   shared:SSL:10m;
-    ssl_session_timeout 10m;
-    ssl_stapling        on;
-    ssl_stapling_verify on;
-
-    client_max_body_size 20m;
-
-    # Security headers
-    add_header X-Frame-Options SAMEORIGIN always;
-    add_header X-Content-Type-Options nosniff always;
-    add_header X-XSS-Protection "1; mode=block" always;
-    add_header Referrer-Policy no-referrer-when-downgrade always;
-    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
-
-    # Auth endpoints — строгий rate limit
-    location ~ ^/api/v1/auth/(login|register) {
-        limit_req zone=crm_auth burst=10 nodelay;
-        proxy_pass http://127.0.0.1:8000;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-
-    # API proxy → backend (порт 8000)
-    location /api/ {
-        limit_req zone=crm_api burst=50 nodelay;
-        proxy_pass http://127.0.0.1:8000;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header Connection "";
-        proxy_read_timeout 60s;
-    }
-
-    # Frontend SPA → frontend (порт 3000)
-    location / {
-        proxy_pass http://127.0.0.1:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
+# Замените example.com на ваш домен
+cp /home/crm/nginx/nginx.prod.conf /etc/nginx/sites-available/example.com
+# Отредактируйте файл — замените все вхождения example.com на ваш домен
+sed -i 's/example.com/yourdomain.com/g' /etc/nginx/sites-available/example.com
 ```
 
 Активировать конфигурацию:
 
 ```bash
 # Создать символическую ссылку
-ln -s /etc/nginx/sites-available/crm.llve.ru /etc/nginx/sites-enabled/crm.llve.ru
+ln -s /etc/nginx/sites-available/example.com /etc/nginx/sites-enabled/example.com
 
 # Проверить конфигурацию на ошибки
 nginx -t
@@ -412,19 +329,19 @@ systemctl reload nginx
 
 ```bash
 # Проверить HTTPS
-curl -I https://crm.llve.ru
+curl -I https://example.com
 
 # Проверить API
-curl https://crm.llve.ru/api/health
+curl https://example.com/api/health
 
 # Статус всех контейнеров
-docker compose -f /home/crm/docker-compose.host-nginx.yml --env-file /home/crm/.env.prod ps
+docker compose -f /home/crm/docker-compose.prod.yml --env-file /home/crm/.env.prod ps
 
 # Логи в реальном времени
-docker compose -f /home/crm/docker-compose.host-nginx.yml --env-file /home/crm/.env.prod logs -f
+docker compose -f /home/crm/docker-compose.prod.yml --env-file /home/crm/.env.prod logs -f
 ```
 
-Открыть в браузере: `https://crm.llve.ru`
+Открыть в браузере: `https://example.com`
 
 **Первый вход:**
 - Email: значение `SUPERADMIN_EMAIL` из `.env.prod`
@@ -459,156 +376,36 @@ crontab -e
 cd /home/crm
 
 # Посмотреть статус
-docker compose -f docker-compose.host-nginx.yml --env-file .env.prod ps
+docker compose -f docker-compose.prod.yml --env-file .env.prod ps
 
 # Логи конкретного сервиса
-docker compose -f docker-compose.host-nginx.yml --env-file .env.prod logs -f backend
-docker compose -f docker-compose.host-nginx.yml --env-file .env.prod logs -f bot
+docker compose -f docker-compose.prod.yml --env-file .env.prod logs -f backend
+docker compose -f docker-compose.prod.yml --env-file .env.prod logs -f bot
 
 # Перезапустить сервис
-docker compose -f docker-compose.host-nginx.yml --env-file .env.prod restart backend
+docker compose -f docker-compose.prod.yml --env-file .env.prod restart backend
 
 # Остановить всё
-docker compose -f docker-compose.host-nginx.yml --env-file .env.prod down
+docker compose -f docker-compose.prod.yml --env-file .env.prod down
 
 # Обновить код и пересобрать
 git pull
-docker compose -f docker-compose.host-nginx.yml --env-file .env.prod up --build -d
+docker compose -f docker-compose.prod.yml --env-file .env.prod up --build -d
 
 # Применить миграции БД вручную
-docker compose -f docker-compose.host-nginx.yml --env-file .env.prod exec backend alembic upgrade head
+docker compose -f docker-compose.prod.yml --env-file .env.prod exec backend alembic upgrade head
 ```
 
 ### Резервное копирование базы данных
 
 ```bash
 # Создать дамп
-docker compose -f /home/crm/docker-compose.host-nginx.yml --env-file /home/crm/.env.prod \
+docker compose -f /home/crm/docker-compose.prod.yml --env-file /home/crm/.env.prod \
   exec postgres pg_dump -U crm crm_db > /home/crm/backup_$(date +%Y%m%d_%H%M%S).sql
 
 # Восстановить из дампа
-docker compose -f /home/crm/docker-compose.host-nginx.yml --env-file /home/crm/.env.prod \
+docker compose -f /home/crm/docker-compose.prod.yml --env-file /home/crm/.env.prod \
   exec -T postgres psql -U crm crm_db < /home/crm/backup_20240101_120000.sql
-```
-
----
-
-## Режим продакшн (PROD — чистый сервер)
-
-Prod-конфигурация (`docker-compose.prod.yml`) использует оптимизированные образы без source-mount'ов, добавляет nginx как reverse proxy с поддержкой HTTPS и ограничивает потребление памяти сервисами.
-
-### Шаг 1 — Подготовить переменные окружения
-
-Создайте файл `.env.prod` в корне проекта. Все переменные, помеченные `(обязательно)`, должны быть заданы — без них prod-контейнер откажется стартовать.
-
-```dotenv
-# === БЕЗОПАСНОСТЬ (ОБЯЗАТЕЛЬНО СМЕНИТЬ) ===
-
-# Случайная строка, минимум 32 символа. Генерация: python -c "import secrets; print(secrets.token_hex(32))"
-SECRET_KEY=замените-на-случайную-строку-минимум-32-символа
-
-# === БАЗА ДАННЫХ ===
-POSTGRES_USER=crm
-POSTGRES_PASSWORD=ваш_надёжный_пароль_postgres   # обязательно
-POSTGRES_DB=crm_db
-
-# === REDIS ===
-REDIS_PASSWORD=ваш_надёжный_пароль_redis          # рекомендуется
-
-# === СУПЕРАДМИНИСТРАТОР ===
-SUPERADMIN_EMAIL=admin@yourdomain.com
-SUPERADMIN_PASSWORD=ВашНадёжныйПароль123!          # обязательно
-
-# === TELEGRAM ===
-BOT_TOKEN=токен_от_BotFather                        # обязательно, если используется бот
-INTERNAL_BOT_TOKEN=случайная-строка-для-внутр-апи  # обязательно, сменить!
-WEBHOOK_URL=https://yourdomain.com/bot/webhook      # если используется webhook-режим
-
-# === CORS ===
-# Точный origin вашего фронтенда — без trailing slash
-CORS_ORIGINS=["https://yourdomain.com"]
-
-# === JWT (опционально, можно оставить дефолты) ===
-ACCESS_TOKEN_EXPIRE_MINUTES=15
-REFRESH_TOKEN_EXPIRE_DAYS=7
-```
-
-> **Внимание:** не добавляйте `VITE_API_URL` в `.env.prod`. В production nginx проксирует `/api` на backend — абсолютный URL не нужен и сломает маршрутизацию.
-
-### Шаг 2 — Добавить SSL-сертификаты
-
-Положите файлы сертификата в директорию `nginx/ssl/`:
-
-```
-nginx/
-└── ssl/
-    ├── cert.pem      # Сертификат (fullchain)
-    └── key.pem       # Приватный ключ
-```
-
-Получить бесплатный сертификат Let's Encrypt:
-
-```bash
-# Через certbot (вне Docker, до первого запуска)
-certbot certonly --standalone -d yourdomain.com
-# Сертификаты появятся в /etc/letsencrypt/live/yourdomain.com/
-# Скопируйте fullchain.pem → nginx/ssl/cert.pem
-#          privkey.pem    → nginx/ssl/key.pem
-```
-
-### Шаг 3 — Запустить prod-стек
-
-```bash
-docker compose -f docker-compose.prod.yml --env-file .env.prod up --build -d
-```
-
-Флаг `-d` запускает сервисы в фоне (detached mode).
-
-### Шаг 4 — Проверить работу
-
-```bash
-# Состояние контейнеров
-docker compose -f docker-compose.prod.yml ps
-
-# Логи backend
-docker compose -f docker-compose.prod.yml logs backend --tail=50
-
-# Логи nginx
-docker compose -f docker-compose.prod.yml logs nginx --tail=50
-
-# Проверить healthcheck backend
-curl -f https://yourdomain.com/api/health
-```
-
-### Архитектура prod-окружения
-
-```
-Интернет
-   │  :443 (HTTPS)
-   ▼
-nginx (crm_nginx)
-   ├── /api/*  → proxy_pass http://backend:8000
-   └── /*      → proxy_pass http://frontend:80  (собранная React-SPA)
-
-backend (crm_backend)   — expose 8000, не публичный
-frontend (crm_frontend) — expose 80,   не публичный (nginx-static)
-postgres (crm_postgres) — только внутренняя сеть
-redis (crm_redis)       — только внутренняя сеть
-bot (crm_bot)           — только внутренняя сеть
-```
-
-В prod-режиме PostgreSQL и Redis не экспонируют порты наружу — доступны только другим сервисам Docker-сети.
-
-### Обновление в production
-
-```bash
-# Получить новый код
-git pull
-
-# Пересобрать и перезапустить (с минимальным downtime)
-docker compose -f docker-compose.prod.yml --env-file .env.prod up --build -d
-
-# Миграции применяются автоматически через entrypoint.sh при старте backend
 ```
 
 ---
@@ -960,14 +757,12 @@ crm/
 │   └── requirements.txt
 │
 ├── nginx/
-│   ├── nginx.prod.conf                # HTTPS + certbot, для чистого сервера
-│   └── nginx.init.conf                # HTTP-only, используется при первом получении сертификата
+│   └── nginx.prod.conf                # Nginx-конфиг (используется внутри Docker при необходимости)
 │
 ├── docker-compose.dev.yml             # Dev: hot-reload, открытые порты
-├── docker-compose.prod.yml            # Prod: Docker nginx + certbot (чистый сервер)
-├── docker-compose.host-nginx.yml      # Prod: без Docker nginx (сервер с существующим nginx)
+├── docker-compose.prod.yml            # Prod: сервер с существующим nginx
 ├── .env.prod.example                  # Шаблон переменных для production
-├── deploy.sh                          # Скрипт автодеплоя (для чистого сервера)
+├── deploy.sh                          # Скрипт деплоя
 ├── README.md                          # Обзор проекта
 └── SETUP.md                           # Это руководство
 ```

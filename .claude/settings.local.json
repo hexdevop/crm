@@ -31,7 +31,12 @@
       "Bash(Get-ChildItem -Path \"E:\\\\crm\\\\frontend\\\\src\\\\pages\" -Recurse -File)",
       "Bash(Select-Object FullName)",
       "Bash(rtk wc *)",
-      "Bash(grep -v \"^--$\")"
+      "Bash(grep -v \"^--$\")",
+      "Bash(Get-ChildItem -Path E:\\\\crm -Force)",
+      "Bash(Select-Object -Property Name, Attributes)",
+      "Bash(Format-Table -AutoSize)",
+      "PowerShell(Get-ChildItem -Path E:\\\\crm\\\\backend\\\\app -Recurse -Directory | Select-Object -ExpandProperty FullName | ForEach-Object { $_.Replace\\('E:\\\\crm\\\\backend\\\\app\\\\', ''\\) } | Sort-Object)",
+      "Bash(Remove-Item *)"
     ]
   }
 }

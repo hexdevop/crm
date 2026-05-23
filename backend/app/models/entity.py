@@ -33,6 +33,7 @@ class FieldType(str, enum.Enum):
     warehouse_location = "warehouse_location" # адрес ячейки на складе
     file = "file"                             # файл / документ
     status = "status"                         # статус с цветом
+    url = "url"                               # ссылка / URL
 
 
 class Entity(Base, TimestampMixin):

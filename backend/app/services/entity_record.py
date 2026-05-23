@@ -101,6 +101,7 @@ class EntityRecordService:
         merged = {**record.data, **validated_data}
         record.data = merged
         await self.db.commit()
+        await self.db.refresh(record)
 
         if redis:
             await self._publish_notification(redis, "record_updated", {
