@@ -76,7 +76,7 @@ Universal CRM — это полнофункциональная CRM-платфо
 
 ```bash
 # 1. Клонировать репозиторий
-git clone <repository-url> crm
+git clone https://github.com/hexdevop/crm crm
 cd crm
 
 # 2. Запустить dev-стек
@@ -176,7 +176,7 @@ POST /api/v1/entities
 
 ```
 Backend (событие)
-    └── Redis PUBLISH  crm:notifications:{company_id}
+    └── Redis PUBLISH  notifications:{company_id}
          └── Bot (SUBSCRIBE, aiogram)
               └── Telegram Bot API → пользователь
 ```
@@ -313,3 +313,14 @@ crm/
 Дипломная работа по специальности «Разработка программного обеспечения».
 
 Проект демонстрирует построение production-ready мультитенантного SaaS-приложения с использованием современного стека: FastAPI, React 18, PostgreSQL, Redis, Docker, Telegram Bot API.
+
+---
+
+## Ссылки
+
+[![GitHub](https://img.shields.io/badge/GitHub-hexdevop%2Fcrm-181717?style=flat&logo=github&logoColor=white)](https://github.com/hexdevop/crm)
+[![Stars](https://img.shields.io/github/stars/hexdevop/crm?style=flat&logo=github)](https://github.com/hexdevop/crm/stargazers)
+
+Исходный код открыт и доступен на GitHub: **https://github.com/hexdevop/crm**
+
+Если проект оказался полезным — поставьте звезду ⭐

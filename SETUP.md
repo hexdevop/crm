@@ -48,7 +48,7 @@ Dev-конфигурация (`docker-compose.dev.yml`) запускает вс�
 ### Шаг 1 — Клонировать репозиторий
 
 ```bash
-git clone <repository-url> crm
+git clone https://github.com/hexdevop/crm crm
 cd crm
 ```
 
@@ -171,7 +171,7 @@ systemctl enable docker && systemctl start docker
 
 ```bash
 cd /home
-git clone <ваш-репозиторий> crm
+git clone https://github.com/hexdevop/crm crm
 cd crm
 ```
 
@@ -506,8 +506,8 @@ python -m bot.main
 ### Привязка аккаунта
 
 1. Войдите в CRM-приложение.
-2. Перейдите в **Настройки** → **Telegram-интеграция**.
-3. Нажмите **Сгенерировать токен подключения** — будет показан одноразовый токен.
+2. Перейдите в **Настройки** → **Telegram**.
+3. Нажмите **Получить токен подключения** — будет показан одноразовый токен.
 4. Откройте бота в Telegram и отправьте команду:
    ```
    /connect ВАШ_ТОКЕН
@@ -516,7 +516,7 @@ python -m bot.main
 
 ### Как работают уведомления
 
-Backend публикует события в Redis-канал `crm:notifications:{company_id}`. Бот подписан на Redis через `SUBSCRIBE` и немедленно пересылает сообщения в Telegram. Привязка хранится в БД: `user.telegram_chat_id`.
+Backend публикует события в Redis-канал `notifications:{company_id}`. Бот подписан на Redis через `PSUBSCRIBE notifications:*` и немедленно пересылает сообщения в Telegram. Привязка хранится в БД: `user.telegram_chat_id`.
 
 ---
 
@@ -704,7 +704,7 @@ crm/
 │   │   │   ├── role.py                # Role, Permission, RolePermission
 │   │   │   ├── entity.py              # Entity, EntityField (FieldType enum)
 │   │   │   ├── entity_record.py       # EntityRecord (JSONB data)
-│   │   │   ├── telegram.py            # TelegramBinding
+│   │   │   ├── telegram.py            # TelegramSettings
 │   │   │   └── access_expiration.py   # AccessExpiration
 │   │   ├── repositories/              # Tenant-scoped репозитории
 │   │   ├── schemas/                   # Pydantic v2 request/response схемы
@@ -762,7 +762,7 @@ crm/
 ├── docker-compose.dev.yml             # Dev: hot-reload, открытые порты
 ├── docker-compose.prod.yml            # Prod: сервер с существующим nginx
 ├── .env.prod.example                  # Шаблон переменных для production
-├── deploy.sh                          # Скрипт деплоя
+├── start.sh                           # Скрипт быстрого запуска dev-окружения
 ├── README.md                          # Обзор проекта
 └── SETUP.md                           # Это руководство
 ```
