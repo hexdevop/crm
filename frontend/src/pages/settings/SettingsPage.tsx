@@ -13,7 +13,12 @@ import toast from 'react-hot-toast'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { useGetTelegramConnectToken } from '@/hooks/useTelegram'
+import {
+  useGetTelegramConnectToken,
+  useTelegramSettings,
+  useUpdateTelegramSettings,
+  useDisconnectTelegram,
+} from '@/hooks/useTelegram'
 
 // ─── Schemas ────────────────────────────────────────────────────────────────
 
@@ -87,6 +92,9 @@ export default function SettingsPage() {
   })
 
   const connectToken = useGetTelegramConnectToken()
+  const { data: tgSettings } = useTelegramSettings()
+  const updateTgSettings = useUpdateTelegramSettings()
+  const disconnectTelegram = useDisconnectTelegram()
 
   const { data: company, refetch: refetchCompany } = useQuery({
     queryKey: ['company', 'me'],
@@ -212,46 +220,136 @@ export default function SettingsPage() {
         </Card>
       )}
 
-      {/* ── Telegram (personal) ── */}
+      {/* ── Telegram ── */}
       {tab === 'telegram' && (
-        <Card>
-          <CardHeader>
-            <p className="text-sm font-semibold text-slate-900">Telegram уведомления</p>
-          </CardHeader>
-          <CardBody>
-            {user?.telegram_chat_id ? (
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center text-xl">
-                  ✈️
+        <div className="space-y-4">
+          {/* Connection card */}
+          <Card>
+            <CardHeader>
+              <p className="text-sm font-semibold text-slate-900">Подключение аккаунта</p>
+            </CardHeader>
+            <CardBody>
+              {user?.telegram_chat_id ? (
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center text-xl shrink-0">
+                      ✈️
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900">Аккаунт подключён</p>
+                      <p className="text-xs text-slate-500">
+                        @{user.telegram_username ?? 'unknown'}
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    loading={disconnectTelegram.isPending}
+                    onClick={() =>
+                      disconnectTelegram.mutate(undefined, {
+                        onSuccess: () => {
+                          setUser({ ...user!, telegram_chat_id: null, telegram_username: null })
+                          toast.success('Telegram аккаунт отключён')
+                        },
+                      })
+                    }
+                    className="text-red-500 hover:text-red-600 border-red-200 hover:border-red-300 hover:bg-red-50"
+                  >
+                    Отключить аккаунт
+                  </Button>
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-slate-900">Подключено</p>
-                  <p className="text-xs text-slate-500">
-                    @{user.telegram_username ?? 'unknown'}
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-sm text-slate-600">
+                    Подключите Telegram для получения уведомлений о новых записях и изменениях.
                   </p>
+                  <Button
+                    variant="secondary"
+                    loading={connectToken.isPending}
+                    onClick={() =>
+                      connectToken.mutate(undefined, {
+                        onSuccess: (data) =>
+                          toast.success(`Отправьте боту: /connect ${data.link_token}`, { duration: 8000 }),
+                      })
+                    }
+                  >
+                    Получить токен подключения
+                  </Button>
                 </div>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <p className="text-sm text-slate-600">
-                  Подключите Telegram для получения уведомлений о новых записях и изменениях.
-                </p>
-                <Button
-                  variant="secondary"
-                  loading={connectToken.isPending}
-                  onClick={() =>
-                    connectToken.mutate(undefined, {
-                      onSuccess: (data) =>
-                        toast.success(`Отправьте боту: /connect ${data.link_token}`),
-                    })
-                  }
-                >
-                  Получить токен подключения
-                </Button>
-              </div>
-            )}
-          </CardBody>
-        </Card>
+              )}
+            </CardBody>
+          </Card>
+
+          {/* Notification settings */}
+          {tgSettings && (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-semibold text-slate-900">Настройки уведомлений</p>
+                  {/* Master toggle */}
+                  <button
+                    type="button"
+                    onClick={() => updateTgSettings.mutate({ is_enabled: !tgSettings.is_enabled })}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      tgSettings.is_enabled ? 'bg-brand-600' : 'bg-slate-200'
+                    }`}
+                  >
+                    <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${
+                      tgSettings.is_enabled ? 'translate-x-6' : 'translate-x-1'
+                    }`} />
+                  </button>
+                </div>
+              </CardHeader>
+              <CardBody>
+                {!tgSettings.is_enabled && (
+                  <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-4">
+                    Уведомления отключены. Включите переключатель выше чтобы получать уведомления.
+                  </p>
+                )}
+                <div className="space-y-3">
+                  {([
+                    { key: 'record_created', label: 'Новые записи',     desc: 'При создании любой записи', icon: '📝' },
+                    { key: 'record_updated', label: 'Изменения записей', desc: 'При редактировании записей', icon: '✏️' },
+                    { key: 'record_deleted', label: 'Удаление записей',  desc: 'При удалении записей', icon: '🗑️' },
+                  ] as const).map(({ key, label, desc, icon }) => {
+                    const enabled = tgSettings.notification_events[key] ?? true
+                    return (
+                      <div key={key} className="flex items-center justify-between py-2 border-b border-slate-100 last:border-0">
+                        <div className="flex items-center gap-3">
+                          <span className="text-lg">{icon}</span>
+                          <div>
+                            <p className="text-sm font-medium text-slate-900">{label}</p>
+                            <p className="text-xs text-slate-400">{desc}</p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          disabled={!tgSettings.is_enabled}
+                          onClick={() =>
+                            updateTgSettings.mutate({
+                              notification_events: {
+                                ...tgSettings.notification_events,
+                                [key]: !enabled,
+                              },
+                            })
+                          }
+                          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors disabled:opacity-40 ${
+                            enabled ? 'bg-brand-600' : 'bg-slate-200'
+                          }`}
+                        >
+                          <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${
+                            enabled ? 'translate-x-4.5' : 'translate-x-0.5'
+                          }`} />
+                        </button>
+                      </div>
+                    )
+                  })}
+                </div>
+              </CardBody>
+            </Card>
+          )}
+        </div>
       )}
 
       {/* ── Security ── */}

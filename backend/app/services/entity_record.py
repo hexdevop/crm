@@ -72,12 +72,12 @@ class EntityRecordService:
         )
         await self.db.commit()
 
-        # Publish notification
         if redis:
             await self._publish_notification(redis, "record_created", {
                 "entity_name": entity.name,
                 "record_id": str(record.id),
                 "company_id": str(self.company_id),
+                "fields_data": self._format_fields_for_notification(record.data, entity.fields),
             })
 
         return record
@@ -94,10 +94,12 @@ class EntityRecordService:
             raise NotFoundException("Entity")
 
         record = await self.get_record(entity_id, record_id)
+        old_data = dict(record.data)
         validated_data = self._validate_record_data(data.data, entity.fields, partial=True)
         validated_data = self._compute_formula_fields({**record.data, **validated_data}, entity.fields)
 
-        # Merge with existing data
+        changes = self._compute_changes(old_data, validated_data, entity.fields)
+
         merged = {**record.data, **validated_data}
         record.data = merged
         await self.db.commit()
@@ -108,14 +110,25 @@ class EntityRecordService:
                 "entity_name": entity.name,
                 "record_id": str(record.id),
                 "company_id": str(self.company_id),
+                "changes": changes,
             })
 
         return record
 
-    async def delete_record(self, entity_id: uuid.UUID, record_id: uuid.UUID) -> None:
+    async def delete_record(self, entity_id: uuid.UUID, record_id: uuid.UUID, redis=None) -> None:
+        entity = await self.entity_repo.get_by_id(entity_id)
         record = await self.get_record(entity_id, record_id)
+        fields_data = self._format_fields_for_notification(record.data, entity.fields if entity else [])
         await self.repo.delete(record)
         await self.db.commit()
+
+        if redis and entity:
+            await self._publish_notification(redis, "record_deleted", {
+                "entity_name": entity.name,
+                "record_id": str(record.id),
+                "company_id": str(self.company_id),
+                "fields_data": fields_data,
+            })
 
     async def _assign_autoincrement_values(
         self,
@@ -315,10 +328,80 @@ class EntityRecordService:
 
         return value
 
+    def _format_value_for_notification(self, field: EntityField, value: Any) -> str:
+        if value is None:
+            return "—"
+        ft = field.field_type
+        if ft in (FieldType.image, FieldType.file):
+            return "📎"
+        if ft == FieldType.boolean:
+            return "Да" if value else "Нет"
+        if ft == FieldType.quantity_unit:
+            if isinstance(value, dict):
+                return f"{value.get('value', '')} {value.get('unit', '')}".strip()
+            return str(value)
+        if ft in (FieldType.select, FieldType.status):
+            config = field.config or {}
+            opts = {o["value"]: o["label"] for o in config.get("options", [])}
+            return opts.get(str(value), str(value))
+        if ft == FieldType.price:
+            try:
+                config = field.config or {}
+                symbol = config.get("symbol", "")
+                decimals = int(config.get("decimals", 2))
+                return f"{float(value):,.{decimals}f} {symbol}".strip()
+            except (TypeError, ValueError):
+                return str(value)
+        if ft == FieldType.number:
+            try:
+                return f"{float(value):g}"
+            except (TypeError, ValueError):
+                return str(value)
+        if ft == FieldType.relation:
+            return f"🔗 {str(value)[:8]}…"
+        return str(value)
+
+    def _format_fields_for_notification(
+        self, data: dict[str, Any], fields: list[EntityField]
+    ) -> dict[str, str]:
+        skip = {FieldType.image, FieldType.file}
+        result: dict[str, str] = {}
+        for field in fields:
+            if field.field_type in skip:
+                continue
+            value = data.get(field.slug)
+            if value is None or value == "":
+                continue
+            result[field.name] = self._format_value_for_notification(field, value)
+        return result
+
+    def _compute_changes(
+        self, old_data: dict[str, Any], new_data: dict[str, Any], fields: list[EntityField]
+    ) -> dict[str, dict[str, str]]:
+        field_map = {f.slug: f for f in fields}
+        changes: dict[str, dict[str, str]] = {}
+        for slug, new_val in new_data.items():
+            old_val = old_data.get(slug)
+            if old_val == new_val or slug not in field_map:
+                continue
+            field = field_map[slug]
+            old_str = self._format_value_for_notification(field, old_val)
+            new_str = self._format_value_for_notification(field, new_val)
+            if old_str != new_str:
+                changes[field.name] = {"old": old_str, "new": new_str}
+        return changes
+
     async def _publish_notification(
         self, redis, event_type: str, payload: dict
     ) -> None:
         import json
+        from app.repositories.telegram import TelegramRepository
+        tg = await TelegramRepository(self.db).get_by_company(self.company_id)
+        if tg:
+            if not tg.is_enabled:
+                return
+            if not tg.notification_events.get(event_type, True):
+                return
         channel = f"notifications:{payload['company_id']}"
         message = json.dumps({"event": event_type, **payload})
         await redis.publish(channel, message)

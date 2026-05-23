@@ -37,7 +37,11 @@
       "Bash(Format-Table -AutoSize)",
       "PowerShell(Get-ChildItem -Path E:\\\\crm\\\\backend\\\\app -Recurse -Directory | Select-Object -ExpandProperty FullName | ForEach-Object { $_.Replace\\('E:\\\\crm\\\\backend\\\\app\\\\', ''\\) } | Sort-Object)",
       "Bash(Remove-Item *)",
-      "Bash(chmod +x /Users/hexdevop/bots/crm/backend/entrypoint.sh)"
+      "Bash(chmod +x /Users/hexdevop/bots/crm/backend/entrypoint.sh)",
+      "Bash(Get-ChildItem -Path \"E:\\\\crm\" -Directory)",
+      "Bash(Select-Object Name)",
+      "Bash(Get-ChildItem -Path \"E:\\\\crm\\\\bot\\\\bot\" -Recurse -Directory)",
+      "Bash(Select-Object Name, FullName)"
     ]
   }
 }

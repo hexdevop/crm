@@ -32,3 +32,10 @@ export function useGetTelegramConnectToken() {
     onError: (err) => toast.error(getApiError(err)),
   })
 }
+
+export function useDisconnectTelegram() {
+  return useMutation({
+    mutationFn: telegramApi.disconnect,
+    onError: (err) => toast.error(getApiError(err)),
+  })
+}

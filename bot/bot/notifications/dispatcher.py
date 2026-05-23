@@ -9,13 +9,7 @@ from bot.config import settings
 
 logger = logging.getLogger(__name__)
 
-EVENT_TEMPLATES = {
-    "record_created": "📝 <b>Новая запись</b>\nСущность: {entity_name}\nID: {record_id}",
-    "record_updated": "✏️ <b>Запись обновлена</b>\nСущность: {entity_name}\nID: {record_id}",
-    "user_assigned": "👤 <b>Назначен пользователь</b>\n{message}",
-    "access_expired": "⏰ <b>Истёк доступ</b>\n{message}",
-    "system": "ℹ️ {message}",
-}
+_DIVIDER = "─" * 20
 
 
 class NotificationDispatcher:
@@ -48,6 +42,55 @@ class NotificationDispatcher:
             logger.warning(f"Could not fetch company users for {company_id}: {e}")
         return []
 
+    def _format_message(self, event: str, payload: dict) -> str:
+        entity_name = payload.get("entity_name", "?")
+
+        if event == "record_created":
+            fields_data: dict = payload.get("fields_data", {})
+            lines = [
+                f"📝 <b>Новая запись создана</b>",
+                f"<i>Сущность: {entity_name}</i>",
+            ]
+            if fields_data:
+                lines.append(_DIVIDER)
+                for name, value in fields_data.items():
+                    lines.append(f"• <b>{name}:</b> {value}")
+            return "\n".join(lines)
+
+        if event == "record_updated":
+            changes: dict = payload.get("changes", {})
+            lines = [
+                f"✏️ <b>Запись обновлена</b>",
+                f"<i>Сущность: {entity_name}</i>",
+            ]
+            if changes:
+                lines.append(_DIVIDER)
+                for name, ch in changes.items():
+                    lines.append(f"• <b>{name}:</b> {ch.get('old', '—')} → {ch.get('new', '—')}")
+            else:
+                lines.append("Данные не изменились")
+            return "\n".join(lines)
+
+        if event == "record_deleted":
+            fields_data = payload.get("fields_data", {})
+            lines = [
+                f"🗑️ <b>Запись удалена</b>",
+                f"<i>Сущность: {entity_name}</i>",
+            ]
+            if fields_data:
+                lines.append(_DIVIDER)
+                for name, value in fields_data.items():
+                    lines.append(f"• <b>{name}:</b> {value}")
+            return "\n".join(lines)
+
+        if event == "user_assigned":
+            return f"👤 <b>Назначен пользователь</b>\n{payload.get('message', '')}"
+
+        if event == "access_expired":
+            return f"⏰ <b>Истёк доступ</b>\n{payload.get('message', '')}"
+
+        return f"ℹ️ {payload.get('message', str(payload))}"
+
     async def dispatch(self, channel: str, raw_message: str) -> None:
         try:
             payload = json.loads(raw_message)
@@ -57,17 +100,13 @@ class NotificationDispatcher:
 
         event = payload.get("event", "system")
         company_id = channel.replace("notifications:", "")
-        template = EVENT_TEMPLATES.get(event, "ℹ️ {message}")
 
-        try:
-            text = template.format(**payload)
-        except KeyError:
-            text = template.format(message=str(payload))
+        text = self._format_message(event, payload)
 
         chat_ids = await self._get_company_chat_ids(company_id)
         for chat_id in chat_ids:
             try:
-                await self.bot.send_message(chat_id, text)
+                await self.bot.send_message(chat_id, text, parse_mode="HTML")
             except Exception as e:
                 logger.warning(f"Failed to send to {chat_id}: {e}")
 

@@ -29,6 +29,7 @@ class TelegramSettings(Base, TimestampMixin):
         default=lambda: {
             "record_created": True,
             "record_updated": True,
+            "record_deleted": True,
             "user_assigned": True,
             "system": True,
         },

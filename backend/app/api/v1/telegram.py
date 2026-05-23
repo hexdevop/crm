@@ -64,6 +64,23 @@ async def get_connect_token(
     )
 
 
+@router.delete("/disconnect")
+async def disconnect_telegram(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user=Depends(get_current_user),
+):
+    """Unlink Telegram account from the current user."""
+    from sqlalchemy import update as sa_update
+    from app.models.user import User
+    await db.execute(
+        sa_update(User)
+        .where(User.id == current_user.id)
+        .values(telegram_chat_id=None, telegram_username=None)
+    )
+    await db.commit()
+    return {"message": "Telegram аккаунт отключён"}
+
+
 @router.post("/webhook")
 async def telegram_webhook(
     request: Request,

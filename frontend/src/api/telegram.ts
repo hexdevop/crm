@@ -10,4 +10,7 @@ export const telegramApi = {
 
   getConnectToken: () =>
     apiClient.post<TelegramConnectResponse>('/telegram/connect').then((r) => r.data),
+
+  disconnect: () =>
+    apiClient.delete<{ message: string }>('/telegram/disconnect').then((r) => r.data),
 }

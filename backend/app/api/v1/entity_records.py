@@ -98,7 +98,8 @@ async def delete_record(
     entity_id: uuid.UUID,
     record_id: uuid.UUID,
     db: Annotated[AsyncSession, Depends(get_db)],
+    redis=Depends(get_redis),
     current_user=Depends(require_permission("delete")),
 ):
     service = EntityRecordService(db, current_user.company_id)
-    await service.delete_record(entity_id, record_id)
+    await service.delete_record(entity_id, record_id, redis)
