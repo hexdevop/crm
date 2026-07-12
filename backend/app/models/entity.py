@@ -34,6 +34,7 @@ class FieldType(str, enum.Enum):
     file = "file"                             # файл / документ
     status = "status"                         # статус с цветом
     url = "url"                               # ссылка / URL
+    currency_convert = "currency_convert"     # автоконвертация валюты по курсу ЦБ
 
 
 class Entity(Base, TimestampMixin):

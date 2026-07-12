@@ -12,6 +12,7 @@ export type FieldType =
   | 'file'                // файл / документ
   | 'status'              // статус с цветом
   | 'url'                 // ссылка / URL
+  | 'currency_convert'    // автоконвертация валюты по курсу
 
 export interface EntityField {
   id: string

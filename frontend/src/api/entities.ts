@@ -77,4 +77,7 @@ export const entitiesApi = {
       })
       .then((r) => r.data)
   },
+
+  getExchangeRates: () =>
+    apiClient.get<{ base: string; rates: Record<string, number> }>('/exchange-rates').then((r) => r.data),
 }

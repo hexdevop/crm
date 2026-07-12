@@ -10,6 +10,7 @@ from app.models.entity import EntityField, FieldType
 from app.repositories.entity import EntityRepository
 from app.repositories.entity_record import EntityRecordRepository
 from app.schemas.entity_record import EntityRecordCreate, EntityRecordUpdate
+from app.services.exchange_rates import get_exchange_rates
 
 
 class EntityRecordService:
@@ -62,7 +63,7 @@ class EntityRecordService:
 
         enriched = await self._assign_autoincrement_values(data.data, entity.fields)
         validated_data = self._validate_record_data(enriched, entity.fields)
-        validated_data = self._compute_formula_fields(validated_data, entity.fields)
+        validated_data = await self._compute_formula_fields(validated_data, entity.fields)
 
         record = await self.repo.create(
             entity_id=entity_id,
@@ -96,7 +97,7 @@ class EntityRecordService:
         record = await self.get_record(entity_id, record_id)
         old_data = dict(record.data)
         validated_data = self._validate_record_data(data.data, entity.fields, partial=True)
-        validated_data = self._compute_formula_fields({**record.data, **validated_data}, entity.fields)
+        validated_data = await self._compute_formula_fields({**record.data, **validated_data}, entity.fields)
 
         changes = self._compute_changes(old_data, validated_data, entity.fields)
 
@@ -153,20 +154,23 @@ class EntityRecordService:
             )
         return result
 
-    def _compute_formula_fields(
+    async def _compute_formula_fields(
         self,
         data: dict[str, Any],
         fields: list[EntityField],
     ) -> dict[str, Any]:
         result = dict(data)
-        for field in fields:
-            if field.field_type != FieldType.formula:
-                continue
+        formula_fields = [f for f in fields if f.field_type == FieldType.formula]
+        currency_fields = [f for f in fields if f.field_type == FieldType.currency_convert]
+        if not formula_fields and not currency_fields:
+            return result
+        rates = await get_exchange_rates()
+        for field in formula_fields:
             config = field.config or {}
             expr = str(config.get("formula", "")).strip()
             if expr:
                 try:
-                    val = self._eval_formula(expr, result)
+                    val = self._eval_formula(expr, result, rates)
                     if val is None:
                         result[field.slug] = None
                     else:
@@ -180,9 +184,34 @@ class EntityRecordService:
                             result[field.slug] = val
                 except Exception:
                     result[field.slug] = None
+        for field in currency_fields:
+            result[field.slug] = self._convert_currency(field, result, rates)
         return result
 
-    def _eval_formula(self, expr: str, data: dict[str, Any]) -> float | None:
+    def _convert_currency(
+        self, field: EntityField, data: dict[str, Any], rates: dict[str, float]
+    ) -> float | None:
+        config = field.config or {}
+        source_slug = str(config.get("source_field", ""))
+        raw = data.get(source_slug)
+        if raw is None or raw == "":
+            return None
+        try:
+            amount = float(raw["value"]) if isinstance(raw, dict) else float(raw)
+        except (TypeError, ValueError, KeyError):
+            return None
+        from_code = str(config.get("from", "usd")).upper()
+        to_code = str(config.get("to", "usd")).upper()
+        rate_from = 1.0 if from_code == "USD" else rates.get(from_code)
+        rate_to = 1.0 if to_code == "USD" else rates.get(to_code)
+        if rate_from is None or rate_to is None:
+            return None
+        decimals = int(config.get("decimals", 2))
+        return round(amount / rate_from * rate_to, decimals)
+
+    def _eval_formula(
+        self, expr: str, data: dict[str, Any], rates: dict[str, float] | None = None
+    ) -> float | None:
         import re
         # Build numeric context from data
         ctx: dict[str, float] = {}
@@ -201,6 +230,13 @@ class EntityRecordService:
                     ctx[slug] = 0.0
             else:
                 ctx[slug] = 0.0
+
+        # rate_<code> = units of <code> per 1 USD (e.g. rate_uzs ≈ 12650)
+        for code, rate in (rates or {}).items():
+            try:
+                ctx[f"rate_{code.lower()}"] = float(rate)
+            except (TypeError, ValueError):
+                pass
 
         # Allow only safe characters
         if re.search(r"[^0-9a-zа-яё_\s\+\-\*\/\.\(\)]", expr, re.IGNORECASE):
@@ -222,7 +258,7 @@ class EntityRecordService:
 
         for field in fields:
             # Server-generated fields: pass through as-is
-            if field.field_type in (FieldType.autoincrement, FieldType.formula):
+            if field.field_type in (FieldType.autoincrement, FieldType.formula, FieldType.currency_convert):
                 if field.slug in data:
                     validated[field.slug] = data[field.slug]
                 continue
@@ -355,6 +391,14 @@ class EntityRecordService:
         if ft == FieldType.number:
             try:
                 return f"{float(value):g}"
+            except (TypeError, ValueError):
+                return str(value)
+        if ft == FieldType.currency_convert:
+            try:
+                config = field.config or {}
+                decimals = int(config.get("decimals", 2))
+                to_code = str(config.get("to", "")).upper()
+                return f"{float(value):,.{decimals}f} {to_code}".strip()
             except (TypeError, ValueError):
                 return str(value)
         if ft == FieldType.relation:

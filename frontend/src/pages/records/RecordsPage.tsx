@@ -132,6 +132,14 @@ function formatValue(
       }
       return <span className="font-semibold text-slate-800 dark:text-slate-200">{String(value)}</span>
     }
+    case 'currency_convert': {
+      const decimals = (field.config as any)?.decimals ?? 2
+      const to = String((field.config as any)?.to ?? '').toUpperCase()
+      const num = typeof value === 'number' ? value : parseFloat(String(value))
+      if (isNaN(num)) return <span className="text-slate-700 dark:text-slate-300">{String(value)}</span>
+      const formatted = num.toLocaleString('ru-RU', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })
+      return <span className="font-medium text-emerald-700 dark:text-emerald-400">{formatted} <span className="text-slate-400 text-xs">{to}</span></span>
+    }
     case 'warehouse_location':
       return (
         <span className="inline-flex items-center gap-1 text-xs font-mono bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded-md">
@@ -340,6 +348,33 @@ export default function RecordsPage() {
   const [showFilters, setShowFilters] = useState(false)
   const [filters, setFilters] = useState<Record<string, string>>({})
 
+  const colWidthsKey = `entity-col-widths:${entityId}`
+  const [colWidths, setColWidths] = useState<Record<string, number>>(() => {
+    try { return JSON.parse(localStorage.getItem(colWidthsKey) ?? '{}') } catch { return {} }
+  })
+  useEffect(() => {
+    localStorage.setItem(colWidthsKey, JSON.stringify(colWidths))
+  }, [colWidths, colWidthsKey])
+
+  const resizingRef = useRef<{ slug: string; startX: number; startWidth: number } | null>(null)
+  const startColResize = (e: React.MouseEvent, slug: string, currentWidth: number) => {
+    e.preventDefault()
+    resizingRef.current = { slug, startX: e.clientX, startWidth: currentWidth }
+    const onMove = (ev: MouseEvent) => {
+      const r = resizingRef.current
+      if (!r) return
+      const width = Math.max(60, r.startWidth + (ev.clientX - r.startX))
+      setColWidths((prev) => ({ ...prev, [r.slug]: width }))
+    }
+    const onUp = () => {
+      resizingRef.current = null
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+    }
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+  }
+
   const activeFilters = useMemo(
     () => Object.fromEntries(Object.entries(filters).filter(([, v]) => v !== '')),
     [filters]
@@ -519,21 +554,35 @@ export default function RecordsPage() {
         ) : (
           <>
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-sm" style={{ tableLayout: 'fixed' }}>
+                <colgroup>
+                  <col style={{ width: 40 }} />
+                  {visibleFields.map((f) => (
+                    <col key={f.id} style={{ width: colWidths[f.slug] ?? 180 }} />
+                  ))}
+                  <col style={{ width: 110 }} />
+                  <col style={{ width: 64 }} />
+                </colgroup>
                 <thead>
                   <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40">
-                    <th className="text-left px-4 py-3 text-xs text-slate-400 font-medium w-10 whitespace-nowrap">#</th>
+                    <th className="text-left px-4 py-3 text-xs text-slate-400 font-medium whitespace-nowrap">#</th>
                     {visibleFields.map((f) => (
                       <th key={f.id}
-                        className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide whitespace-nowrap">
-                        {f.name}
-                        {f.is_required && <span className="text-red-400 ml-0.5">*</span>}
+                        className="relative text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+                        <div className="truncate pr-2">
+                          {f.name}
+                          {f.is_required && <span className="text-red-400 ml-0.5">*</span>}
+                        </div>
+                        <div
+                          onMouseDown={(e) => startColResize(e, f.slug, colWidths[f.slug] ?? 180)}
+                          className="absolute top-0 right-0 h-full w-1.5 cursor-col-resize hover:bg-brand-400/50 active:bg-brand-500 select-none"
+                        />
                       </th>
                     ))}
                     <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide whitespace-nowrap">
                       Создан
                     </th>
-                    <th className="px-4 py-3 w-16" />
+                    <th className="px-4 py-3" />
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
@@ -551,7 +600,7 @@ export default function RecordsPage() {
                         {(page - 1) * 25 + idx + 1}
                       </td>
                       {visibleFields.map((f) => (
-                        <td key={f.id} className="px-4 py-3.5 max-w-[200px]">
+                        <td key={f.id} className="px-4 py-3.5">
                           <div className="truncate">
                             {f.field_type === 'relation' && record.data[f.slug]
                               ? <RelationCell field={f} value={String(record.data[f.slug])} navigate={navigate} />

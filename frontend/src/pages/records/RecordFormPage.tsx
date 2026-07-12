@@ -12,6 +12,64 @@ import MovementPanel from '@/components/movements/MovementPanel'
 import toast from 'react-hot-toast'
 import type { EntityField } from '@/types/entity'
 
+// ─── Live formula evaluation (mirrors backend _eval_formula) ────────────────
+// ponytail: regex-restricted char set only, no live re-implementation of the eval sandbox subtleties
+function evalFormula(
+  expr: string,
+  data: Record<string, unknown>,
+  rates: Record<string, number> = {}
+): number | null {
+  if (!expr || /[^0-9a-zа-яё_\s+\-*/.()]/i.test(expr)) return null
+  const ctx: Record<string, number> = {}
+  for (const [slug, value] of Object.entries(data)) {
+    if (typeof value === 'number') ctx[slug] = value
+    else if (value && typeof value === 'object' && 'value' in (value as any)) {
+      const n = Number((value as any).value)
+      ctx[slug] = Number.isFinite(n) ? n : 0
+    } else if (typeof value === 'string' && value.trim() !== '') {
+      const n = Number(value)
+      ctx[slug] = Number.isFinite(n) ? n : 0
+    } else {
+      ctx[slug] = 0
+    }
+  }
+  // rate_<code> = units of <code> per 1 USD (e.g. rate_uzs ≈ 12650)
+  for (const [code, rate] of Object.entries(rates)) {
+    ctx[`rate_${code.toLowerCase()}`] = rate
+  }
+  const tokens = expr.match(/[a-zа-яё_][a-zа-яё0-9_]*/gi) ?? []
+  if (tokens.some((t) => !(t in ctx))) return null
+  const jsExpr = expr.replace(/[a-zа-яё_][a-zа-яё0-9_]*/gi, (t) => String(ctx[t]))
+  try {
+    // safe: jsExpr only contains digits/operators/whitespace after identifier substitution above
+    const val = Function(`"use strict"; return (${jsExpr});`)()
+    return typeof val === 'number' && Number.isFinite(val) ? Math.round(val * 1e10) / 1e10 : null
+  } catch {
+    return null
+  }
+}
+
+// ─── Live currency conversion (mirrors backend _convert_currency) ───────────
+function convertCurrency(
+  config: Record<string, unknown>,
+  data: Record<string, unknown>,
+  rates: Record<string, number> = {}
+): number | null {
+  const sourceSlug = String(config.source_field ?? '')
+  const raw = data[sourceSlug]
+  const amount = typeof raw === 'object' && raw !== null && 'value' in (raw as any)
+    ? Number((raw as any).value)
+    : Number(raw)
+  if (!Number.isFinite(amount)) return null
+  const from = String(config.from ?? 'usd').toUpperCase()
+  const to = String(config.to ?? 'usd').toUpperCase()
+  const rateFrom = from === 'USD' ? 1 : rates[from]
+  const rateTo = to === 'USD' ? 1 : rates[to]
+  if (!rateFrom || !rateTo) return null
+  const decimals = config.decimals !== undefined ? Number(config.decimals) : 2
+  return Math.round((amount / rateFrom) * rateTo * 10 ** decimals) / 10 ** decimals
+}
+
 // ─── QR display (install qrcode.react if needed) ────────────────────────────
 function BarcodeDisplay({ value }: { value: string }) {
   const copy = () => { navigator.clipboard.writeText(value); toast.success('Скопировано') }
@@ -119,13 +177,18 @@ function ImageUploader({ field, value, onChange }: {
       setUploading(false)
     }
   }
+  const handlePaste = (e: React.ClipboardEvent) => {
+    const item = Array.from(e.clipboardData.items).find((i) => i.type.startsWith('image/'))
+    const file = item?.getAsFile()
+    if (file) handleUpload(file)
+  }
   return (
     <div>
       <label className="label">
         {field.name}
         {field.is_required && <span className="text-red-500 ml-0.5">*</span>}
       </label>
-      <div className="space-y-2">
+      <div className="space-y-2" onPaste={handlePaste} tabIndex={0}>
         {value ? (
           <div className="relative inline-block">
             <img src={String(value)} alt={field.name}
@@ -141,7 +204,7 @@ function ImageUploader({ field, value, onChange }: {
             {uploading ? <Spinner size="sm" /> : (
               <>
                 <Upload size={20} className="text-slate-400 mb-1" />
-                <span className="text-xs text-slate-400">Загрузить фото</span>
+                <span className="text-xs text-slate-400 text-center px-1">Загрузить фото<br />или Ctrl+V</span>
               </>
             )}
           </div>
@@ -423,6 +486,28 @@ function FieldInput({
         </div>
       )
 
+    case 'currency_convert': {
+      const decimals = (field.config as any)?.decimals ?? 2
+      const to = String((field.config as any)?.to ?? '').toUpperCase()
+      const num = typeof value === 'number' ? value : parseFloat(String(value))
+      return (
+        <div>
+          <label className="label">
+            {field.name}
+            <span className="ml-2 text-xs text-slate-400 font-normal">(конвертируется автоматически)</span>
+          </label>
+          <div className="flex items-center gap-2 p-3 bg-emerald-50 rounded-xl border border-emerald-200">
+            <span className="text-xs text-emerald-500">💱</span>
+            <span className="text-sm font-medium text-emerald-700">
+              {Number.isFinite(num)
+                ? `${num.toLocaleString('ru-RU', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })} ${to}`
+                : '—'}
+            </span>
+          </div>
+        </div>
+      )
+    }
+
     case 'warehouse_location': {
       const placeholder = (field.config as any)?.placeholder ?? 'А-12-3'
       return (
@@ -549,9 +634,64 @@ export default function RecordFormPage() {
   const createRecord = useCreateRecord()
   const updateRecord = useUpdateRecord()
 
+  const hasFormulaField = entity?.fields.some(
+    (f) => f.field_type === 'formula' || f.field_type === 'currency_convert'
+  ) ?? false
+  const { data: exchangeRates } = useQuery({
+    queryKey: ['exchange-rates'],
+    queryFn: () => entitiesApi.getExchangeRates(),
+    enabled: hasFormulaField,
+    staleTime: 60 * 60 * 1000, // 1h — matches backend cache TTL
+    refetchInterval: 60 * 60 * 1000,
+  })
+
   useEffect(() => {
     if (existingRecord) setFormData(existingRecord.data)
   }, [existingRecord])
+
+  // Recompute formula fields live as their source fields change (e.g. currency conversion)
+  useEffect(() => {
+    const formulaFields = entity?.fields.filter((f) => f.field_type === 'formula') ?? []
+    if (formulaFields.length === 0) return
+    setFormData((prev) => {
+      let changed = false
+      const next = { ...prev }
+      for (const field of formulaFields) {
+        const config = (field.config as any) ?? {}
+        const expr = String(config.formula ?? '').trim()
+        if (!expr) continue
+        const val = evalFormula(expr, prev, exchangeRates?.rates)
+        const prefix = String(config.prefix ?? '')
+        const suffix = String(config.suffix ?? '')
+        const display =
+          val === null ? null : prefix || suffix ? `${prefix}${val}${suffix}` : val
+        if (next[field.slug] !== display) {
+          next[field.slug] = display
+          changed = true
+        }
+      }
+      return changed ? next : prev
+    })
+  }, [formData, entity, exchangeRates])
+
+  // Recompute currency_convert fields live as their source field changes
+  useEffect(() => {
+    const currencyFields = entity?.fields.filter((f) => f.field_type === 'currency_convert') ?? []
+    if (currencyFields.length === 0) return
+    setFormData((prev) => {
+      let changed = false
+      const next = { ...prev }
+      for (const field of currencyFields) {
+        const config = (field.config as any) ?? {}
+        const val = convertCurrency(config, prev, exchangeRates?.rates)
+        if (next[field.slug] !== val) {
+          next[field.slug] = val
+          changed = true
+        }
+      }
+      return changed ? next : prev
+    })
+  }, [formData, entity, exchangeRates])
 
   const setField = (slug: string, value: unknown) =>
     setFormData((prev) => ({ ...prev, [slug]: value }))
@@ -636,17 +776,25 @@ export default function RecordFormPage() {
       {activeTab === 'fields' ? (
         <Card>
           <CardBody>
-            <form onSubmit={(e) => e.preventDefault()} className="space-y-5">
-              {entity.fields.map((field) => (
-                <FieldInput
-                  key={field.id}
-                  field={field}
-                  value={formData[field.slug]}
-                  onChange={(v) => setField(field.slug, v)}
-                />
-              ))}
+            <form onSubmit={(e) => e.preventDefault()} className="grid grid-cols-12 gap-x-4 gap-y-5">
+              {entity.fields.map((field) => {
+                const width = (field.config as any)?.width ?? 'full'
+                const span =
+                  width === 'third' ? 'col-span-12 sm:col-span-4' :
+                  width === 'half' ? 'col-span-12 sm:col-span-6' :
+                  'col-span-12'
+                return (
+                  <div key={field.id} className={span}>
+                    <FieldInput
+                      field={field}
+                      value={formData[field.slug]}
+                      onChange={(v) => setField(field.slug, v)}
+                    />
+                  </div>
+                )
+              })}
               {entity.fields.length === 0 && (
-                <p className="text-sm text-slate-500 text-center py-4">
+                <p className="col-span-12 text-sm text-slate-500 text-center py-4">
                   Нет полей — добавьте поля в конструкторе
                 </p>
               )}

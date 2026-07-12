@@ -26,6 +26,7 @@ const FIELD_TYPES: { type: FieldType; label: string; icon: string; desc: string 
   { type: 'quantity_unit',      label: 'Количество + ед.',   icon: '⚖️', desc: 'Число с единицей измерения' },
   { type: 'autoincrement',      label: 'Артикул (авто №)',   icon: '🔖', desc: 'Автоматически генерируемый уникальный номер' },
   { type: 'formula',            label: 'Формула',            icon: '🧮', desc: 'Вычисляемое поле (Сумма = Кол × Цена)' },
+  { type: 'currency_convert',   label: 'Конвертация валют',  icon: '💱', desc: 'Автоматический перевод суммы в другую валюту по курсу' },
   { type: 'email',              label: 'Email',              icon: '📧', desc: 'Адрес эл. почты' },
   { type: 'phone',              label: 'Телефон',            icon: '📱', desc: 'Номер телефона' },
   { type: 'date',               label: 'Дата',               icon: '📅', desc: 'Дата (ГГГГ-ММ-ДД)' },
@@ -46,7 +47,7 @@ const ICONS  = ['📋','👤','🏢','💼','📦','🎯','🔑','📊','💬','
 
 const FIELD_TYPE_COLORS: Record<string, string> = {
   text: '#6366f1', email: '#6366f1', phone: '#6366f1', barcode: '#6366f1', url: '#6366f1',
-  number: '#22c55e', price: '#22c55e', quantity_unit: '#22c55e', formula: '#22c55e',
+  number: '#22c55e', price: '#22c55e', quantity_unit: '#22c55e', formula: '#22c55e', currency_convert: '#22c55e',
   date: '#f97316', expiry_date: '#f97316',
   select: '#3b82f6', status: '#3b82f6', boolean: '#3b82f6',
   relation: '#8b5cf6',
@@ -375,6 +376,22 @@ function FormulaConfigEditor({ config, onChange, fields }: {
           </div>
         </div>
       )}
+      <div>
+        <p className="text-xs text-slate-400 mb-1">Курсы валют (обновляются в реальном времени):</p>
+        <div className="flex flex-wrap gap-1">
+          {['usd', 'eur', 'rub', 'uzs', 'kzt'].map((code) => (
+            <code key={code}
+              className="text-xs bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded cursor-pointer hover:bg-emerald-100"
+              onClick={() => onChange({ ...config, formula: `${config.formula ?? ''} rate_${code}`.trim() })}>
+              rate_{code}
+            </code>
+          ))}
+        </div>
+        <p className="text-xs text-slate-400 mt-1">
+          <code className="bg-slate-100 px-1 rounded">rate_xxx</code> — курс валюты за 1 USD.
+          Пример перевода из UZS в USD: <code className="bg-slate-100 px-1 rounded">цена_uzs / rate_uzs</code>
+        </p>
+      </div>
       <div className="grid grid-cols-2 gap-2">
         <div>
           <label className="text-xs text-slate-500 mb-1 block">Префикс (перед числом)</label>
@@ -398,7 +415,70 @@ function FormulaConfigEditor({ config, onChange, fields }: {
           Пример результата: <code className="bg-blue-50 text-blue-700 px-1 rounded">{preview}</code>
         </p>
       )}
-      <p className="text-xs text-slate-400">Поддерживаются: +, −, ×, ÷, скобки. Значение пересчитывается при каждом сохранении.</p>
+      <p className="text-xs text-slate-400">Поддерживаются: +, −, ×, ÷, скобки. Значение пересчитывается в реальном времени при вводе.</p>
+    </div>
+  )
+}
+
+// ─── CURRENCY CONVERT Config Editor ──────────────────────────────────────────
+const CURRENCY_CODES = ['usd', 'eur', 'rub', 'uzs', 'kzt']
+
+function CurrencyConvertConfigEditor({ config, onChange, fields }: {
+  config: Record<string, unknown>
+  onChange: (c: Record<string, unknown>) => void
+  fields: FieldDraft[]
+}) {
+  const sourceFields = fields.filter((f) =>
+    ['number', 'price', 'quantity_unit'].includes(f.field_type)
+  )
+  const decimals = config.decimals !== undefined ? Number(config.decimals) : 2
+  return (
+    <div className="mt-3 space-y-2">
+      <div>
+        <label className="text-xs text-slate-500 mb-1 block">Поле-источник (сумма для конвертации)</label>
+        <select
+          className="text-xs border border-slate-200 rounded px-2 py-1.5 w-full bg-white focus:outline-none focus:ring-1 focus:ring-brand-500"
+          value={String(config.source_field ?? '')}
+          onChange={(e) => onChange({ ...config, source_field: e.target.value })}
+        >
+          <option value="">— выберите поле —</option>
+          {sourceFields.map((f) => (
+            <option key={f._id} value={f.slug}>{f.name}</option>
+          ))}
+        </select>
+      </div>
+      <div className="grid grid-cols-3 gap-2">
+        <div>
+          <label className="text-xs text-slate-500 mb-1 block">Из валюты</label>
+          <select
+            className="text-xs border border-slate-200 rounded px-2 py-1.5 w-full bg-white focus:outline-none focus:ring-1 focus:ring-brand-500"
+            value={String(config.from ?? 'usd')}
+            onChange={(e) => onChange({ ...config, from: e.target.value })}
+          >
+            {CURRENCY_CODES.map((c) => <option key={c} value={c}>{c.toUpperCase()}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="text-xs text-slate-500 mb-1 block">В валюту</label>
+          <select
+            className="text-xs border border-slate-200 rounded px-2 py-1.5 w-full bg-white focus:outline-none focus:ring-1 focus:ring-brand-500"
+            value={String(config.to ?? 'uzs')}
+            onChange={(e) => onChange({ ...config, to: e.target.value })}
+          >
+            {CURRENCY_CODES.map((c) => <option key={c} value={c}>{c.toUpperCase()}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="text-xs text-slate-500 mb-1 block">Знаков после запятой</label>
+          <input type="number" min="0" max="4"
+            className="text-xs border border-slate-200 rounded px-2 py-1.5 w-full bg-white focus:outline-none focus:ring-1 focus:ring-brand-500"
+            value={String(decimals)}
+            onChange={(e) => onChange({ ...config, decimals: e.target.value === '' ? 2 : Number(e.target.value) })} />
+        </div>
+      </div>
+      <p className="text-xs text-slate-400">
+        Курс обновляется в реальном времени. Значение пересчитывается при каждом сохранении записи.
+      </p>
     </div>
   )
 }
@@ -476,7 +556,7 @@ function WarehouseConfigEditor({ config, onChange }: {
 
 const FIELDS_WITH_CONFIG = new Set([
   'select', 'number', 'expiry_date', 'quantity_unit', 'relation',
-  'price', 'autoincrement', 'formula', 'status', 'warehouse_location',
+  'price', 'autoincrement', 'formula', 'status', 'warehouse_location', 'currency_convert',
 ])
 
 // ─── Sortable Field Row ─────────────────────────────────────────────────────
@@ -537,7 +617,7 @@ function SortableField({ field, updateField, removeField, toggleExpand, currentE
                   onChange={(e) => updateField(field._id, { slug: slugifyField(e.target.value) })} />
               </div>
               {/* Checkboxes */}
-              <div className="col-span-2 flex items-center gap-6">
+              <div className="col-span-2 flex items-center gap-6 flex-wrap">
                 <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer select-none">
                   <input type="checkbox" checked={field.is_required}
                     onChange={(e) => updateField(field._id, { is_required: e.target.checked })}
@@ -549,6 +629,18 @@ function SortableField({ field, updateField, removeField, toggleExpand, currentE
                     onChange={(e) => updateField(field._id, { is_searchable: e.target.checked })}
                     className="accent-brand-600 w-3.5 h-3.5" />
                   Участвует в поиске
+                </label>
+                <label className="flex items-center gap-2 text-sm text-slate-600 select-none">
+                  Ширина в форме
+                  <select
+                    className="text-xs border border-slate-200 rounded px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-brand-500"
+                    value={String((field.config as any)?.width ?? 'full')}
+                    onChange={(e) => updateField(field._id, { config: { ...field.config, width: e.target.value } })}
+                  >
+                    <option value="full">Полная</option>
+                    <option value="half">Половина</option>
+                    <option value="third">Треть</option>
+                  </select>
                 </label>
               </div>
             </div>
@@ -604,6 +696,10 @@ function SortableField({ field, updateField, removeField, toggleExpand, currentE
               )}
               {field.field_type === 'formula' && (
                 <FormulaConfigEditor config={numConfig} fields={allFields.filter((f) => f._id !== field._id)}
+                  onChange={(c) => updateField(field._id, { config: c })} />
+              )}
+              {field.field_type === 'currency_convert' && (
+                <CurrencyConvertConfigEditor config={numConfig} fields={allFields.filter((f) => f._id !== field._id)}
                   onChange={(c) => updateField(field._id, { config: c })} />
               )}
               {field.field_type === 'status' && (
